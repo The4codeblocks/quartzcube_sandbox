@@ -254,8 +254,8 @@ void drawMain() {
 	drawAll();
 	clearAll();
 
-	DrawLine3D(Vector3Zero(), Vector3Scale(camOri.forth, 4.0), RED);
-	DrawLine3D(Vector3Zero(), camOri.up, GREEN);
+	//DrawLine3D(Vector3Zero(), Vector3Scale(camOri.forth, 4.0), RED);
+	//DrawLine3D(Vector3Zero(), camOri.up, GREEN);
 
 	EndMode3D();
 	EndTextureMode();
