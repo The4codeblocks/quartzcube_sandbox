@@ -1,0 +1,191 @@
+
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
+
+#include "raylib.h"
+#include "rlgl.h"
+#include "raymath.h"
+#include "suppmath.h"
+
+#include "object.h"
+#include "componentDefs.h"
+
+#include "renderHandler.h"
+#include "uiHandler.h"
+
+#include "channels.h"
+
+#include "gametime.h"
+
+int main()
+{
+	srand(time(NULL));
+
+	drawInit();
+	UIInit();
+
+	float pitch = 0;
+
+	updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
+
+	initDefs();
+
+	float sensitivity = DEG2RAD * 0.5;
+	float speed = 4.0;
+
+	bool mouseLocked = false;
+
+	SetExitKey(-1);
+	SetMousePosition(winXCenter, winYCenter);
+	
+	{
+		Object* obj = createObject((pos3) { 4, 0, 0 }, (cstr) { NULL, 0 });
+		addComponent(obj, &definitions[controllable]);
+		addComponent(obj, &definitions[particleCannon]);
+		MeshData md = *(MeshData*)addComponent(obj, &definitions[drawMesh])->data;
+		md.mesh = brickMesh;
+		md.part.col = RAYWHITE;
+		md.part.absorption = WHITE;
+		md.part.scale = (Vector3){ 1.0, 1.0, 2.0 };
+		updateMaterial(md);
+	}
+
+	// game loop
+	while (!WindowShouldClose())		// run the loop untill the user presses the Close button on the window
+	{
+		updateTime();
+
+		BeginDrawing(); // CLIENT
+
+		// control
+		if (IsKeyPressed(KEY_ESCAPE)) {
+			mouseLocked = false;
+			ShowCursor();
+		}
+
+		if (IsKeyPressed(KEY_TAB)) {
+			if (IsKeyDown(KEY_LEFT_CONTROL)) {
+				controlled = NULL;
+			}
+		}
+
+		if (!mouseLocked & IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+			mouseLocked = true;
+			HideCursor();
+			SetMousePosition(winXCenter, winYCenter);
+		}
+		
+		if (!IsWindowFocused()) {
+			mouseLocked = false;
+			ShowCursor();
+		}
+		
+		if (mouseLocked) {
+			camOri = rotateOrientationAxisAngle(camOri, camOri.up, (GetMouseX() - winXCenter) * sensitivity);
+			pitch = fmin(fmax(pitch + (GetMouseY() - winYCenter) * sensitivity, -5.0*PI/8.0), 5.0*PI/8.0);
+			SetMousePosition(winXCenter, winYCenter);
+			updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
+		}
+
+		if (!controlled) {
+			if (IsKeyDown(KEY_R)) {
+				camOri = rotateOrientationAxisAngle(camOri, camOri.forth, -dt);
+				updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
+			}
+			if (IsKeyDown(KEY_F)) {
+				camOri = rotateOrientationAxisAngle(camOri, camOri.forth, dt);
+				updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
+			}
+		}
+
+		Vector3 movement = {0};
+
+		float displacement = dt * speed;
+		if (IsKeyDown(KEY_W)) movement = Vector3Add(movement, Vector3Scale(camFace.forth, displacement));
+		if (IsKeyDown(KEY_S)) movement = Vector3Add(movement, Vector3Scale(camFace.forth, -displacement));
+		if (IsKeyDown(KEY_A)) movement = Vector3Add(movement, Vector3Scale(camR, -displacement));
+		if (IsKeyDown(KEY_D)) movement = Vector3Add(movement, Vector3Scale(camR, displacement));
+		if (IsKeyDown(KEY_E)) movement = Vector3Add(movement, Vector3Scale(camFace.up, displacement));
+		if (IsKeyDown(KEY_Q)) movement = Vector3Add(movement, Vector3Scale(camFace.up, -displacement));
+		if (IsKeyDown(KEY_SPACE)) movement = Vector3Add(movement, Vector3Scale(camOri.up, displacement));
+		if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) movement = Vector3Add(movement, Vector3Scale(camOri.up, -displacement));
+
+		if (mouseLocked)
+		if (controlled) {
+			Component* comp = controlled->components;
+			while (comp) {
+				ComponentDef* def = comp->def;
+				if (def->recieve) def->recieve(comp, moveTo, moveTo_(vec3addPv(camPos, movement)));
+				comp = comp->next;
+			}
+			camPos = controlled->pos;
+			camOri = rotateOrientationAxisAngle(camOri, camOri.up, (GetMouseX() - winXCenter) * sensitivity);
+			updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
+			mainCam.position = Vector3Scale(camFace.forth, -4.0);
+			mainCam.target = (Vector3){ 0 };
+		} else {
+			camPos = vec3addPv(camPos, movement);
+			updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
+			mainCam.position = (Vector3){ 0 };
+		}
+
+		if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+			Object* object = createObject(vec3addPv(camPos, Vector3Scale(camFace.forth, 4.0)), (cstr) { NULL, 0 });
+			object->orientation = camFace;
+			((MeshData*)(addComponent(object, &definitions[drawEmerald])->data))->mesh = brickMesh;
+			addComponent(object, &definitions[UImesh]);
+			addComponent(object, &definitions[copyOnClick]);
+		}
+
+		if (controlled)
+		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+			Component* comp = controlled->components;
+			while (comp) {
+				ComponentDef* def = comp->def;
+				if (def->recieve) def->recieve(comp, interact0, (cstr) { 0 });
+				comp = comp->next;
+			}
+		}
+
+		drawMain();
+		UIMain();
+		
+		unsigned short action = 0;
+		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT   )) action = action | ui_DLMB;
+		if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT  )) action = action | ui_DRMB;
+		if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE )) action = action | ui_DMMB;
+		if (IsMouseButtonPressed(MOUSE_BUTTON_SIDE   )) action = action | ui_DSMB;
+		if (IsMouseButtonPressed(MOUSE_BUTTON_EXTRA  )) action = action | ui_DEMB;
+		if (IsMouseButtonPressed(MOUSE_BUTTON_FORWARD)) action = action | ui_DFMB;
+		if (IsMouseButtonPressed(MOUSE_BUTTON_BACK   )) action = action | ui_DBMB;
+		if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT   )) action = action | ui_ULMB;
+		if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT  )) action = action | ui_URMB;
+		if (IsMouseButtonReleased(MOUSE_BUTTON_MIDDLE )) action = action | ui_UMMB;
+		if (IsMouseButtonReleased(MOUSE_BUTTON_SIDE   )) action = action | ui_USMB;
+		if (IsMouseButtonReleased(MOUSE_BUTTON_EXTRA  )) action = action | ui_UEMB;
+		if (IsMouseButtonReleased(MOUSE_BUTTON_FORWARD)) action = action | ui_UFMB;
+		if (IsMouseButtonReleased(MOUSE_BUTTON_BACK   )) action = action | ui_UBMB;
+		if (action) send(action);
+
+		// end the frame and get ready for the next one  (display frame, poll input, etc...)
+		EndDrawing();
+
+		// SERVER
+
+		ObjectNode* node = rootObjectNode;
+		while (node) {
+			Component* comp = node->object.components;
+			while (comp) {
+				ComponentDef* def = comp->def;
+				if (def->tick) def->tick(comp, dt);
+				comp = comp->next;
+			}
+			node = node->next;
+		}
+	}
+
+	drawFin();
+
+	return 0;
+}

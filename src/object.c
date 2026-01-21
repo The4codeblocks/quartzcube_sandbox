@@ -1,0 +1,92 @@
+
+#include <stdlib.h>
+
+#include "object.h"
+
+Object* createObject(pos3 pos, cstr serial) { // TODO: serialization
+	ObjectNode* objectNode = calloc(1, sizeof(ObjectNode));
+	objectNode->object.pos = pos;
+	Object* object = &(objectNode->object);
+	object->node = objectNode;
+	object->orientation = (orientation){ 0,0,1, 0,1,0 };
+	objectNode->next = rootObjectNode;
+	if (rootObjectNode) rootObjectNode->prev = objectNode;
+	rootObjectNode = objectNode;
+	return object;
+}
+
+void eliminateObject(Object* obj) {
+	ObjectNode* node = obj->node;
+	if (node) {
+		ObjectNode* prev = node->prev;
+		ObjectNode* next = node->next;
+		if (prev) prev->next = next;
+		else rootObjectNode = next;
+		if (next) next->prev = prev;
+	}
+	Component* comp = node->object.components;
+	while (comp) {
+		Component* next = comp->next;
+		eliminateComponent(comp);
+		comp = next;
+	}
+	free(node);
+}
+
+Component* addComponent(Object* object, ComponentDef* def) {
+	Component* components = object->components;
+	Component* component = malloc(sizeof(Component));
+	component->def = def;
+	component->next = components;
+	component->prev = NULL;
+	component->obj = object;
+	object->components = component;
+	def->init(component);
+	return component;
+}
+
+void eliminateComponent(Component* component) {
+	Component* prev = component->prev;
+	if (prev) {
+		prev->next = component->next;
+	} else {
+		component->obj->components = component->next;
+	}
+	void (*elim)(Component*) = component->def->elim;
+	if (elim) elim(component);
+	free(component);
+}
+
+void copyComponents(Object* target, Object* from) {
+	Component* comp = from->components;
+	while (comp) {
+		addComponent(target, comp->def);
+		comp = comp->next;
+	}
+}
+
+void drawFrom(ObjectNode* startingNode) {
+	ObjectNode* node = startingNode;
+	while (node) {
+		Component* comp = node->object.components;
+		while (comp) {
+			ComponentDef* def = comp->def;
+			if (def->draw) def->draw(comp);
+			comp = comp->next;
+		}
+		node = node->next;
+	}
+}
+
+void UIFrom(ObjectNode* startingNode) {
+	ObjectNode* node = startingNode;
+	while (node) {
+		Component* comp = node->object.components;
+		while (comp) {
+			ComponentDef* def = comp->def;
+			if (def->pushUI) def->pushUI(comp);
+			comp = comp->next;
+		}
+		node = node->next;
+	}
+}
