@@ -21,11 +21,16 @@ typedef enum {
 } dataChannel;
 
 pos3 moveTo_temp;
-char orient_temp[24];
+orientation orient_temp;
 
 inline cstr moveTo_(pos3 pos) {
 	moveTo_temp = pos;
 	return (cstr) { .data = &moveTo_temp, 24 };
+}
+
+inline cstr orient_(orientation ori) {
+	orient_temp = ori;
+	return (cstr) { .data = &orient_temp, 24 };
 }
 
 #endif

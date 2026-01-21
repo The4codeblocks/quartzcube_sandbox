@@ -15,8 +15,10 @@
 #include "uiHandler.h"
 
 #include "channels.h"
+#include "controls.h"
 
 #include "gametime.h"
+
 
 int main()
 {
@@ -101,24 +103,18 @@ int main()
 			}
 		}
 
-		Vector3 movement = {0};
-
 		float displacement = dt * speed;
-		if (IsKeyDown(KEY_W)) movement = Vector3Add(movement, Vector3Scale(camFace.forth, displacement));
-		if (IsKeyDown(KEY_S)) movement = Vector3Add(movement, Vector3Scale(camFace.forth, -displacement));
-		if (IsKeyDown(KEY_A)) movement = Vector3Add(movement, Vector3Scale(camR, -displacement));
-		if (IsKeyDown(KEY_D)) movement = Vector3Add(movement, Vector3Scale(camR, displacement));
-		if (IsKeyDown(KEY_E)) movement = Vector3Add(movement, Vector3Scale(camFace.up, displacement));
-		if (IsKeyDown(KEY_Q)) movement = Vector3Add(movement, Vector3Scale(camFace.up, -displacement));
-		if (IsKeyDown(KEY_SPACE)) movement = Vector3Add(movement, Vector3Scale(camOri.up, displacement));
-		if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) movement = Vector3Add(movement, Vector3Scale(camOri.up, -displacement));
+		Vector3 movement = Vector3Scale(getMovement(), displacement);
 
 		if (mouseLocked)
 		if (controlled) {
 			Component* comp = controlled->components;
 			while (comp) {
 				ComponentDef* def = comp->def;
-				if (def->recieve) def->recieve(comp, moveTo, moveTo_(vec3addPv(camPos, movement)));
+				if (def->recieve) {
+					def->recieve(comp, moveTo, moveTo_(vec3addPv(camPos, movement)));
+					def->recieve(comp, orient, orient_(projectOrientation(camOri, comp->obj->orientation.up)));
+				}
 				comp = comp->next;
 			}
 			camPos = controlled->pos;
@@ -143,7 +139,7 @@ int main()
 		}
 
 		if (controlled)
-		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+		if (true | IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			Component* comp = controlled->components;
 			while (comp) {
 				ComponentDef* def = comp->def;
@@ -187,7 +183,7 @@ int main()
 				size_t* delP = &(node->next);
 				if (def->tick) def->tick(comp, dt);
 				if ((*delP) == 1) {
-					//free(node);
+					free(node);
 					break;
 				}
 				comp = comp->next;

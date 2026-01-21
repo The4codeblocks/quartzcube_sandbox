@@ -10,8 +10,6 @@
 
 #include "componentDefs.h"
 
-#include "config.h"
-
 #define matrixScale(x, y, z) (Matrix){ x, 0.0f, 0.0f, 0.0f, 0.0f, y, 0.0f, 0.0f, 0.0f, 0.0f, z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f }
 /*
 typedef struct {
@@ -113,11 +111,16 @@ void cannonInput(Component* comp, dataChannel channel, cstr data) {
 		md->part.col = GREEN;
 		md->part.absorption = WHITE;
 		md->part.scale = (Vector3){0.125, 0.125, 0.125};
+		obj->orientation = object->orientation;
 		updateMaterial(*md);
 		break;
 	case moveTo:
 		if (data.length < 24) break;
 		object->pos = *(pos3*)(data.data);
+		break;
+	case orient:
+		if (data.length < 24) break;
+		object->orientation = *(orientation*)(data.data);
 		break;
 	}
 }

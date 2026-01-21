@@ -14,7 +14,10 @@ Material M1;
 
 void setControlled(Object* obj) {
 	controlled = obj;
-	if (obj) camOri = projectOrientation(camOri, obj->orientation.up);
+	if (obj) {
+		camOri = projectOrientation(camOri, obj->orientation.up);
+		camPos = obj->pos;
+	}
 }
 
 void pushUIobj(Mesh mesh, Matrix transform, UIobject* obj) {

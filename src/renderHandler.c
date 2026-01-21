@@ -254,6 +254,9 @@ void drawMain() {
 	drawAll();
 	clearAll();
 
+	DrawLine3D(Vector3Zero(), Vector3Scale(camOri.forth, 4.0), RED);
+	DrawLine3D(Vector3Zero(), camOri.up, GREEN);
+
 	EndMode3D();
 	EndTextureMode();
 	DrawTextureEx(rndt.texture, (Vector2) { winWidth, winHeight }, 180.0, 1.0, WHITE);
