@@ -156,12 +156,12 @@ inline orientation projectOrientation(orientation from, Vector3 on) {
 
 typedef struct { // string with specified length instead of null termination
 	char* data;
-	int length;
+	size_t length;
 } cstr;
 
 inline cstr copyNTstring(char* NTstring) { // Copies a [n]ull-[t]erminated string into a newly allocated (strlen(NTstring) bytes) counted string
 	size_t length = strlen(NTstring);
-	if (length == 0) return;
+	if (length == 0) return (cstr) { 0 };
 
 	char* data = malloc(length);
 	for (size_t i = 0; i < length; i++) data[i] = NTstring[i];

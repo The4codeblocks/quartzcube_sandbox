@@ -17,20 +17,20 @@ Object* createObject(pos3 pos, cstr serial) { // TODO: serialization
 
 void eliminateObject(Object* obj) {
 	ObjectNode* node = obj->node;
+	Component* comp = obj->components;
+	while (comp) {
+		Component* next = comp->next;
+		eliminateComponent(comp);
+		comp = next;
+	}
 	if (node) {
 		ObjectNode* prev = node->prev;
 		ObjectNode* next = node->next;
 		if (prev) prev->next = next;
 		else rootObjectNode = next;
 		if (next) next->prev = prev;
-	}
-	Component* comp = node->object.components;
-	while (comp) {
-		Component* next = comp->next;
-		eliminateComponent(comp);
-		comp = next;
-	}
-	free(node);
+		obj->node->next = (ObjectNode*)1;
+	} else free(obj);
 }
 
 Component* addComponent(Object* object, ComponentDef* def) {
@@ -41,7 +41,7 @@ Component* addComponent(Object* object, ComponentDef* def) {
 	component->prev = NULL;
 	component->obj = object;
 	object->components = component;
-	def->init(component);
+	if (def->init) def->init(component);
 	return component;
 }
 

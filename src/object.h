@@ -74,7 +74,7 @@ ObjectNode* rootObjectNode; // object list root node pointer, can be null
 
 Object* createObject(pos3, cstr); // allocates memory to create an object
 
-void eliminateObject(ObjectNode*); // deletes the object associated with a node
+void eliminateObject(Object*);
 
 Component* addComponent(Object*, ComponentDef*); // adds component to object
 

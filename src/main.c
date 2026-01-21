@@ -43,12 +43,14 @@ int main()
 		Object* obj = createObject((pos3) { 4, 0, 0 }, (cstr) { NULL, 0 });
 		addComponent(obj, &definitions[controllable]);
 		addComponent(obj, &definitions[particleCannon]);
-		MeshData md = *(MeshData*)addComponent(obj, &definitions[drawMesh])->data;
-		md.mesh = brickMesh;
-		md.part.col = RAYWHITE;
-		md.part.absorption = WHITE;
-		md.part.scale = (Vector3){ 1.0, 1.0, 2.0 };
-		updateMaterial(md);
+		MeshData* md = (MeshData*)addComponent(obj, &definitions[drawMesh])->data;
+		md->mesh = brickMesh;
+		md->part.col = RAYWHITE;
+		md->part.absorption = WHITE;
+		md->part.scale = (Vector3){ 1.0, 1.0, 2.0 };
+		UIscalable* ui = (UIscalable*)addComponent(obj, &definitions[UImesh])->data;
+		ui->scl.mesh = brickMesh;
+		ui->scl.scale = (Vector3){ 1.0, 1.0, 2.0 };
 	}
 
 	// game loop
@@ -134,8 +136,10 @@ int main()
 			Object* object = createObject(vec3addPv(camPos, Vector3Scale(camFace.forth, 4.0)), (cstr) { NULL, 0 });
 			object->orientation = camFace;
 			((MeshData*)(addComponent(object, &definitions[drawEmerald])->data))->mesh = brickMesh;
-			addComponent(object, &definitions[UImesh]);
 			addComponent(object, &definitions[copyOnClick]);
+			UIscalable* ui = (UIscalable*)addComponent(object, &definitions[UImesh])->data;
+			ui->scl.mesh = brickMesh;
+			ui->scl.scale = (Vector3){ 1.0, 0.25, 0.5 };
 		}
 
 		if (controlled)
@@ -176,12 +180,19 @@ int main()
 		ObjectNode* node = rootObjectNode;
 		while (node) {
 			Component* comp = node->object.components;
+			ObjectNode* next = node->next;
 			while (comp) {
 				ComponentDef* def = comp->def;
+				ObjectNode* node = comp->obj->node;
+				size_t* delP = &(node->next);
 				if (def->tick) def->tick(comp, dt);
+				if ((*delP) == 1) {
+					//free(node);
+					break;
+				}
 				comp = comp->next;
 			}
-			node = node->next;
+			node = next;
 		}
 	}
 

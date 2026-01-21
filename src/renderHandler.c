@@ -175,7 +175,7 @@ void drawAll() {
 Material createTransmitMaterial() {
 	Material material = LoadMaterialDefault();
 	material.shader = transmission;
-	material.maps[MATERIAL_MAP_ROUGHNESS].texture = rndt.texture;
+	material.maps[MATERIAL_MAP_VIEWPORT].texture = rndt.texture;
 	return material;
 }
 

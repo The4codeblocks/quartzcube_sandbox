@@ -11,6 +11,7 @@
 
 #define MATERIAL_MAP_TRANSMIT MATERIAL_MAP_SPECULAR
 #define SHADER_LOC_VIEWPORT SHADER_LOC_MAP_ROUGHNESS
+#define MATERIAL_MAP_VIEWPORT MATERIAL_MAP_ROUGHNESS
 
 typedef enum {
 	unleft,
@@ -44,6 +45,11 @@ void pushElement(RenderElement element);
 Material defaultMat;
 
 Material createTransmitMaterial();
+inline void unloadTransmitMaterial(Material mat) {
+	mat.shader = (Shader){0};
+	mat.maps[MATERIAL_MAP_VIEWPORT].texture.id = -1;
+	UnloadMaterial(mat);
+}
 
 void clearAll();
 

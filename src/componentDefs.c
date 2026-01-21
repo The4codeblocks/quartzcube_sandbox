@@ -10,6 +10,8 @@
 
 #include "componentDefs.h"
 
+#include "config.h"
+
 #define matrixScale(x, y, z) (Matrix){ x, 0.0f, 0.0f, 0.0f, 0.0f, y, 0.0f, 0.0f, 0.0f, 0.0f, z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f }
 /*
 typedef struct {
@@ -100,21 +102,22 @@ void updateMaterial(MeshData data) {
 
 
 void cannonInput(Component* comp, dataChannel channel, cstr data) {
+	Object* object = comp->obj;
 	switch (channel) {
 	case interact0:
-		Object* obj = createObject(comp->obj->pos, (cstr) { 0 });
+		Object* obj = createObject(object->pos, (cstr) { 0 });
 		*(float*)(addComponent(obj, &definitions[lifetime])->data) = 1.0;
-		((VelocityData*)(addComponent(obj, &definitions[velocity])->data))->velocity = vec3fromv(Vector3Scale(obj->orientation.forth, 64.0));
-		MeshData md = *(MeshData*)addComponent(obj, &definitions[drawMesh])->data;
-		md.mesh = brickMesh;
-		md.part.col = GREEN;
-		md.part.absorption = WHITE;
-		md.part.scale = (Vector3){0.125, 0.125, 0.125};
-		updateMaterial(md);
+		((VelocityData*)(addComponent(obj, &definitions[velocity])->data))->velocity = vec3fromv(Vector3Scale(object->orientation.forth, 64.0));
+		MeshData* md = (MeshData*)addComponent(obj, &definitions[drawMesh])->data;
+		md->mesh = brickMesh;
+		md->part.col = GREEN;
+		md->part.absorption = WHITE;
+		md->part.scale = (Vector3){0.125, 0.125, 0.125};
+		updateMaterial(*md);
 		break;
 	case moveTo:
 		if (data.length < 24) break;
-		comp->obj->pos = *(pos3*)(data.data);
+		object->pos = *(pos3*)(data.data);
 		break;
 	}
 }
@@ -145,12 +148,12 @@ void initFloat(Component* comp) {
 void lifetime_tick(Component* comp, float dt) {
 	float* data = comp->data;
 	*data -= dt;
-	if (data < 0) eliminateObject(comp->obj);
+	if ((*data) < 0) eliminateObject(comp->obj);
 }
 
 
 void velocity_init(Component* comp) {
-	comp->data = malloc(sizeof(VelocityData));
+	comp->data = calloc(1, sizeof(VelocityData));
 }
 
 void velocity_tick(Component* comp, float dt) {
@@ -162,8 +165,7 @@ void velocity_tick(Component* comp, float dt) {
 
 
 void initScalable(Component* comp) {
-	Scalable* data = malloc(sizeof(Scalable));
-	comp->data = data;
+	comp->data = malloc(sizeof(Scalable));
 }
 
 
@@ -180,7 +182,7 @@ void UImesh_pushUI(Component* comp) {
 	Object* object = comp->obj;
 	vec3 pos = vec3subPP(object->pos, camPos);
 
-	Matrix translation = MatrixTranslate(pos.x, pos.y, pos.z);
+	Matrix translation = MatrixTranslate((float)pos.x, (float)pos.y, (float)pos.z);
 	Matrix rotation = QuaternionToMatrix(QuaternionFromOrientationToOrientation((orientation) { 0, 0, 1, 0, 1, 0 }, object->orientation));
 	Matrix move = MatrixMultiply(rotation, translation);
 
@@ -200,11 +202,12 @@ void drawEmerald_init(Component* comp) {
 	MeshData* data = malloc(sizeof(MeshData));
 	data->mat = createTransmitMaterial();
 	data->mat.shader = transmission;
-	PartData part = data->part;
-	part.scale = (Vector3){ 1.0, 0.25, 0.5 };
-	//part.col = (Color){ rand() & 255, rand() & 255, rand() & 255, 255 };
-	part.col = BLUE;
-	part.absorption = (Color){ rand() & 255, rand() & 255, rand() & 255, 255 };
+	PartData* part = &data->part;
+	part->scale = (Vector3){ 1.0, 0.25, 0.5 };
+	//part->col = (Color){ rand() & 255, rand() & 255, rand() & 255, 255 };
+	part->col = BLUE;
+	part->absorption = (Color){ rand() & 255, rand() & 255, rand() & 255, 255 };
+	updateMaterial(*data);
 	srand(rand());
 	comp->data = data;
 }
@@ -214,6 +217,7 @@ void drawMesh_init(Component* comp) {
 	MeshData* data = malloc(sizeof(MeshData));
 	data->mat = createTransmitMaterial();
 	data->mat.shader = transmission;
+	data->part.scale = (Vector3){1.0, 1.0, 1.0};
 	comp->data = data;
 }
 
@@ -237,7 +241,7 @@ void drawMesh_draw(Component* comp) {
 
 void drawMesh_elim(Component* comp) {
 	MeshData* data = comp->data;
-	UnloadMaterial(data->mat);
+	unloadTransmitMaterial(data->mat);
 	free(data);
 }
 
@@ -264,7 +268,7 @@ void initDefs() {
 
 	definitions[velocity] = (ComponentDef){
 		.init = velocity_init,
-		.pushUI = UImesh_pushUI,
+		.tick = velocity_tick,
 		.elim = freeData,
 	};
 
