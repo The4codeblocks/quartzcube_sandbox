@@ -36,12 +36,6 @@ struct Component {
 	void* data; // arbitrary data structure
 };
 
-typedef unsigned short UIinteraction;
-
-typedef enum {
-	solid,
-} UIID;
-
 typedef struct {
 	Object* obj;
 	UIID type;
@@ -54,9 +48,8 @@ struct ComponentDef {
 
 	void (*draw)(Component*); // draw component
 	void (*pushUI)(Component*); // push component to UI
-	void (*UIaction)(Component*, UIobject, UIinteraction); // parse UI input
 
-	void (*recieve)(Component*, dataChannel, cstr); // signals
+	void (*recieve)(Component*, dataChannel, cstr); // signals / UI
 
 	cstr (*serialize)(Component); // convert component to data
 	void (*deserialize)(Component*, cstr); // load data to component

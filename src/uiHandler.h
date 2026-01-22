@@ -4,6 +4,7 @@
 
 #include "raylib.h"
 #include "object.h"
+#include "channels.h"
 #include "componentDefs.h"
 
 #define ui_DLMB 1
@@ -32,6 +33,7 @@ void pushUIobj(Mesh mesh, Matrix transform, UIobject*);
 void UIInit();
 void UIMain();
 
+UIobject* getPointed();
 void send(UIinteraction);
 
 #endif

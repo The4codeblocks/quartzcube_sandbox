@@ -93,6 +93,13 @@ void initEmerald(Object* object) {
 
 
 
+typedef struct ObjectRefNode ObjectRefNode;
+struct ObjectRefNode {
+	Object* obj;
+	ObjectRefNode* next;
+};
+
+
 void updateMaterial(MeshData data) {
 	data.mat.maps[MATERIAL_MAP_DIFFUSE].color = data.part.col;
 	data.mat.maps[MATERIAL_MAP_TRANSMIT].color = data.part.absorption;
@@ -102,17 +109,19 @@ void updateMaterial(MeshData data) {
 void cannonInput(Component* comp, dataChannel channel, cstr data) {
 	Object* object = comp->obj;
 	switch (channel) {
-	case interact0:
-		Object* obj = createObject(object->pos, (cstr) { 0 });
-		*(float*)(addComponent(obj, &definitions[lifetime])->data) = 1.0;
-		((VelocityData*)(addComponent(obj, &definitions[velocity])->data))->velocity = vec3fromv(Vector3Scale(object->orientation.forth, 64.0));
-		MeshData* md = (MeshData*)addComponent(obj, &definitions[drawMesh])->data;
-		md->mesh = brickMesh;
-		md->part.col = GREEN;
-		md->part.absorption = WHITE;
-		md->part.scale = (Vector3){0.125, 0.125, 0.125};
-		obj->orientation = object->orientation;
-		updateMaterial(*md);
+	case interact:
+		if (data.length >= 2 && (*(UIinteraction*)data.data) & ui_DLMB) {
+			Object* obj = createObject(object->pos, (cstr) { 0 });
+			*(float*)(addComponent(obj, &definitions[lifetime])->data) = 1.0;
+			((VelocityData*)(addComponent(obj, &definitions[velocity])->data))->velocity = vec3fromv(Vector3Scale(object->orientation.forth, 64.0));
+			MeshData* md = (MeshData*)addComponent(obj, &definitions[drawMesh])->data;
+			md->mesh = brickMesh;
+			md->part.col = GREEN;
+			md->part.absorption = WHITE;
+			md->part.scale = (Vector3){ 0.125, 0.125, 0.125 };
+			obj->orientation = object->orientation;
+			updateMaterial(*md);
+		}
 		break;
 	case moveTo:
 		if (data.length < 24) break;
@@ -126,27 +135,98 @@ void cannonInput(Component* comp, dataChannel channel, cstr data) {
 }
 
 
-void copyOnClick_UIaction(Component* comp, UIobject obj, UIinteraction action) {
-	if (obj.type == solid)
-	if (action & ui_DLMB) {
-		Object* source = obj.obj;
-		Object* object = createObject(source->pos, (cstr) { NULL, 0 });
-		copyComponents(object, source);
-					
-		
-		object->orientation = source->orientation;
-		object->pos = vec3addPv(source->pos, source->orientation.up);
+Component* findFirstComponent(Object* obj, ComponentDef* def) { // O(n), finds 1st component matching given definition
+	Component* comp = obj->components;
+	while (comp) {
+		ComponentDef* ndef = comp->def;
+		if (ndef == def) return comp;
+		comp = comp->next;
+	}
+}
+
+void wireConnect(Object* from, Object* to) {
+	Component* comp = findFirstComponent(from, &definitions[wireable]);
+	if (!comp) return;
+	ObjectRefNode* node = malloc(sizeof(ObjectRefNode));
+	node->next = comp->data;
+	comp->data = node;
+	node->obj = to;
+}
+
+void wireSendAll(Object* from, cstr data) {
+	Component* comp = findFirstComponent(from, &definitions[wireable]);
+	if (!comp) return;
+	ObjectRefNode* node = comp->data;
+	while (node) {
+		ObjectRefNode* next = node->next;
+		sendSignal(node->obj, wire, data);
+		node = next;
+	}
+}
+
+void wireable_elim(Component* comp) {
+	ObjectRefNode* node = comp->data;
+	while (node) {
+		ObjectRefNode* next = node->next;
+		free(node);
+		node = next;
+	}
+}
+
+
+void copyOnClick_UIaction(Component* comp, dataChannel channel, cstr data) {
+	if (data.length >= 3 & channel == click) {
+		ClickAction act = *(ClickAction*)data.data;
+		if (act.id == solid)
+		if (act.action & ui_DLMB) {
+			Object* source = comp->obj;
+			Object* object = createObject(vec3addPv(source->pos, source->orientation.up), (cstr) { NULL, 0 });
+			copyComponents(object, source);
+			object->orientation = source->orientation;
+		}
 	}
 };
 
-void controllable_UIaction(Component* comp, UIobject obj, UIinteraction action) {
-	if ((action & ui_DLMB) && IsKeyDown(KEY_LEFT_CONTROL)) setControlled(obj.obj);
+void paint(Component* comp, Color col) {
+	MeshData* md = comp->data;
+	md->part.col = col;
+	updateMaterial(*md);
+}
+
+void controllable_UIaction(Component* comp, dataChannel channel, cstr data) {
+	if (data.length >= 3 & channel == click) {
+		ClickAction act = *(ClickAction*)data.data;
+		if (act.id == solid)
+		if (act.action & ui_DLMB) setControlled(comp->obj);
+	}
+}
+
+void sendOnClick_UIaction(Component* comp, dataChannel channel, cstr data) {
+	if (data.length >= 3 & channel == click) {
+		ClickAction act = *(ClickAction*)data.data;
+		if (act.id == solid)
+		if (act.action & ui_DLMB) wireSendAll(comp->obj, (cstr) { 0 });
+	}
+}
+
+void blinker_recieve(Component* comp, dataChannel channel, cstr data) {
+	if (channel == wire) {
+		Component* meshC = findFirstComponent(comp->obj, &definitions[drawMesh]);
+		Color interm = ((MeshData*)(meshC->data))->part.col;
+		paint(meshC, *(Color*)comp->data);
+		*(Color*)comp->data = interm;
+	}
 }
 
 
 void initFloat(Component* comp) {
 	comp->data = malloc(sizeof(float));
 }
+
+void initColor(Component* comp) {
+	comp->data = malloc(sizeof(Color));
+}
+
 
 void lifetime_tick(Component* comp, float dt) {
 	float* data = comp->data;
@@ -249,6 +329,19 @@ void drawMesh_elim(Component* comp) {
 }
 
 
+void wireable_draw(Component* comp) {
+	ObjectRefNode* node = comp->data;
+	while (node) {
+		Vector3 posF = vec3tov(vec3subPP(comp->obj->pos, camPos));
+		Vector3 posT = vec3tov(vec3subPP(node->obj->pos, camPos));
+		Vector3 posM = Vector3Scale(Vector3Add(posF, posT), 0.5);
+		DrawLine3D(posF, posM, ORANGE);
+		DrawLine3D(posM, posT, YELLOW);
+		node = node->next;
+	}
+}
+
+
 void initDefs() {
 	
 	definitions[drawMesh] = (ComponentDef){
@@ -282,15 +375,30 @@ void initDefs() {
 	};
 
 	definitions[copyOnClick] = (ComponentDef){
-		.UIaction = copyOnClick_UIaction
+		.recieve = copyOnClick_UIaction
 	};
 
 	definitions[controllable] = (ComponentDef){
-		.UIaction = controllable_UIaction
+		.recieve = controllable_UIaction
 	};
 
 	definitions[particleCannon] = (ComponentDef){
 		.recieve = cannonInput
+	};
+
+	definitions[wireable] = (ComponentDef){
+		.draw = wireable_draw,
+		.elim = wireable_elim,
+	};
+
+	definitions[sendOnClick] = (ComponentDef){
+		.recieve = sendOnClick_UIaction
+	};
+
+	definitions[blinker] = (ComponentDef){
+		.init = initColor,
+		.recieve = blinker_recieve,
+		.elim = freeData,
 	};
 
 }

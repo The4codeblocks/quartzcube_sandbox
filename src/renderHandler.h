@@ -67,7 +67,6 @@ RenderTexture2D rndt;
 
 Texture wabbit;
 Shader transmission;
-Model unitcube;
 Mesh brickMesh;
 
 int winWidth;

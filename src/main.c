@@ -45,14 +45,48 @@ int main()
 		Object* obj = createObject((pos3) { 4, 0, 0 }, (cstr) { NULL, 0 });
 		addComponent(obj, &definitions[controllable]);
 		addComponent(obj, &definitions[particleCannon]);
-		MeshData* md = (MeshData*)addComponent(obj, &definitions[drawMesh])->data;
+		MeshData* md = addComponent(obj, &definitions[drawMesh])->data;
 		md->mesh = brickMesh;
 		md->part.col = RAYWHITE;
 		md->part.absorption = WHITE;
 		md->part.scale = (Vector3){ 1.0, 1.0, 2.0 };
-		UIscalable* ui = (UIscalable*)addComponent(obj, &definitions[UImesh])->data;
+		updateMaterial(*md);
+		UIscalable* ui = addComponent(obj, &definitions[UImesh])->data;
 		ui->scl.mesh = brickMesh;
 		ui->scl.scale = (Vector3){ 1.0, 1.0, 2.0 };
+	}
+
+	{
+		Object* source;
+		Object* dest;
+
+		{
+			source = createObject((pos3) { -4, 4, 0 }, (cstr) { NULL, 0 });
+			UIscalable* ui = addComponent(source, &definitions[UImesh])->data;
+			ui->scl.mesh = brickMesh;
+			ui->scl.scale = (Vector3){ 0.25, 0.25, 0.25 };
+			addComponent(source, &definitions[sendOnClick]);
+			addComponent(source, &definitions[wireable]);
+			MeshData* md = addComponent(source, &definitions[drawMesh])->data;
+			md->mesh = brickMesh;
+			md->part.col = RED;
+			md->part.absorption = WHITE;
+			md->part.scale = (Vector3){ 0.25, 0.25, 0.25 };
+			updateMaterial(*md);
+		}
+
+		{
+			dest = createObject((pos3) { -4, 0, 0 }, (cstr) { NULL, 0 });
+			MeshData* md = addComponent(dest, &definitions[drawMesh])->data;
+			md->mesh = brickMesh;
+			md->part.col = GRAY;
+			md->part.absorption = WHITE;
+			md->part.scale = (Vector3){ 0.25, 0.25, 0.25 };
+			updateMaterial(*md);
+			*(Color*)addComponent(dest, &definitions[blinker])->data = (Color){0,255,0,255};
+		}
+
+		wireConnect(source, dest);
 	}
 
 	// game loop
@@ -127,8 +161,8 @@ int main()
 			updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
 			mainCam.position = (Vector3){ 0 };
 		}
-
-		if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+		/*
+		if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
 			Object* object = createObject(vec3addPv(camPos, Vector3Scale(camFace.forth, 4.0)), (cstr) { NULL, 0 });
 			object->orientation = camFace;
 			((MeshData*)(addComponent(object, &definitions[drawEmerald])->data))->mesh = brickMesh;
@@ -137,16 +171,7 @@ int main()
 			ui->scl.mesh = brickMesh;
 			ui->scl.scale = (Vector3){ 1.0, 0.25, 0.5 };
 		}
-
-		if (controlled)
-		if (true | IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-			Component* comp = controlled->components;
-			while (comp) {
-				ComponentDef* def = comp->def;
-				if (def->recieve) def->recieve(comp, interact0, (cstr) { 0 });
-				comp = comp->next;
-			}
-		}
+		*/
 
 		drawMain();
 		UIMain();
@@ -167,6 +192,9 @@ int main()
 		if (IsMouseButtonReleased(MOUSE_BUTTON_FORWARD)) action = action | ui_UFMB;
 		if (IsMouseButtonReleased(MOUSE_BUTTON_BACK   )) action = action | ui_UBMB;
 		if (action) send(action);
+
+		if (controlled)
+		if (action) sendSignal(controlled, interact, interact_(action));
 
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();

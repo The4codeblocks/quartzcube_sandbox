@@ -65,17 +65,21 @@ void UIMain() {
 
 }
 
-void send(UIinteraction event) {
+UIobject* getPointed() {
 	Color ID0 = GetPixelColor((int*)UIESpace0.data, UIESpace0.format);
 	Color ID1 = GetPixelColor((int*)UIESpace1.data, UIESpace1.format);
 	float depth = GetPixelColor((int*)depthbuf.data, depthbuf.format).r;
-	size_t ID = (size_t)ID0.r | (size_t)ID0.g << 8 | (size_t)ID0.b << 16 | (size_t)ID1.r << 24 | (size_t)ID1.g << 32 | (size_t)ID1.b << 40;
+	return (UIobject*)((size_t)ID0.r | (size_t)ID0.g << 8 | (size_t)ID0.b << 16 | (size_t)ID1.r << 24 | (size_t)ID1.g << 32 | (size_t)ID1.b << 40);
+}
+
+void send(UIinteraction event) {
+	UIobject* ID = getPointed();
 	if (ID) {
 		UIobject obj = *(UIobject*)ID;
 		Component* comp = obj.obj->components;
 		while (comp) {
 			ComponentDef* def = comp->def;
-			if (def->UIaction) def->UIaction(comp, obj, event);
+			if (def->recieve) def->recieve(comp, click, click_(event, ID->type));
 			comp = comp->next;
 		}
 	}

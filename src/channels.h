@@ -16,12 +16,34 @@ typedef enum {
 	arbitrary = 0, // expect whatever
 	moveTo, // move to a position relative to origin, takes x:bbbbbbbb, y:bbbbbbbb, z:bbbbbbbb
 	orient, // orient relative to space, takes fx:bbbb, fy:bbbb, fz:bbbb, ux:bbbb, uy:bbbb, uz:bbbb
-	interact0, // player interaction input, normally bound to LMB
-	interact1, // player interaction input, normally bound to RMB
+	interact, // player interaction input, takes input:bb in respect to UIinteraction
+	click, // exactly like interact but for clicks, takes input:bb, type:b
+	paginate, // usually a player interaction input, intended for sequences, normally bound to SCROLL, takes direction:b[enum directionOrtho]
+	scroll, // exactly like paginate but for scrolling, takes direction:b[enum directionOrtho], type:b
+	wire, // mechanical input, takes type:b, data:(type?<number>:bbbbbbbb,<position>:(x:bbbbbbbb y:bbbbbbbb z:bbbbbbbb),<string>:b...), if invalid interprets as impulse
 } dataChannel;
+
+typedef unsigned short UIinteraction;
+
+typedef struct {
+	UIinteraction action;
+	char id;
+} ClickAction;
+
+typedef struct {
+	char action;
+	char id;
+} ScrollAction;
+
+typedef enum {
+	solid,
+} UIID;
 
 pos3 moveTo_temp;
 orientation orient_temp;
+UIinteraction interact_temp;
+ClickAction click_temp;
+ScrollAction scroll_temp;
 
 inline cstr moveTo_(pos3 pos) {
 	moveTo_temp = pos;
@@ -31,6 +53,21 @@ inline cstr moveTo_(pos3 pos) {
 inline cstr orient_(orientation ori) {
 	orient_temp = ori;
 	return (cstr) { .data = &orient_temp, 24 };
+}
+
+inline cstr interact_(UIinteraction action) {
+	interact_temp = action;
+	return (cstr) { .data = &interact_temp, 2 };
+}
+
+inline cstr click_(UIinteraction action, UIID ID) {
+	click_temp = (ClickAction){action, ID};
+	return (cstr) { .data = &click_temp, 3 };
+}
+
+inline cstr scroll_(directionOrtho dir, UIID ID) {
+	scroll_temp = (ScrollAction){ dir, ID };
+	return (cstr) { .data = &scroll_temp, 2 };
 }
 
 #endif

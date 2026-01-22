@@ -214,8 +214,7 @@ void drawInit() {
 
 	// Load a texture from the resources directory
 	wabbit = LoadTexture("wabbit_alpha.png");
-	unitcube = LoadModel("unitcube.obj");
-	brickMesh = unitcube.meshes[0];
+	brickMesh = GenMeshCube(1.0, 1.0, 1.0);
 
 	defaultMat = LoadMaterialDefault();
 
@@ -254,8 +253,12 @@ void drawMain() {
 	drawAll();
 	clearAll();
 
-	//DrawLine3D(Vector3Zero(), Vector3Scale(camOri.forth, 4.0), RED);
-	//DrawLine3D(Vector3Zero(), camOri.up, GREEN);
+	DrawLine3D((Vector3) { 0, -4, 4 }, Vector3Add(Vector3Scale(camOri.forth, 4.0), (Vector3) { 0, -4, 4 }), RED);
+	DrawLine3D((Vector3) { 0, -4, 4 }, Vector3Add(camOri.up, (Vector3){ 0, -4, 4 }), GREEN);
+	orientation exp = rotateOrientationQuaternion((orientation) { 0, 0, 1, 0, 1, 0 }, QuaternionFromOrientationToOrientation((orientation) { 0, 0, 1, 0, 1, 0 }, camOri));
+	printf("\n%.2f\n", (Vector3Distance(Vector3RotateByQuaternion((Vector3) { 0, 0, 1 }, QuaternionFromVector3ToVector3((Vector3) { 0, 0, 1 }, camOri.forth)), camOri.forth)));
+	DrawLine3D((Vector3) { 0.1, -4, 4 }, Vector3Add(Vector3Scale(exp.forth, 4.0), (Vector3) { 0.1, -4, 4 }), PURPLE);
+	DrawLine3D((Vector3) { 0.1, -4, 4 }, Vector3Add(exp.up, (Vector3){ 0.1, -4, 4 }), WHITE);
 
 	EndMode3D();
 	EndTextureMode();

@@ -43,11 +43,18 @@ typedef enum {
 	copyOnClick,    // data: NULL
 	controllable,   // data: NULL
 	particleCannon, // data: NULL
+	physics,        // data: <this is not done>
+	wireable,       // data: LinkedList<Object*>
+	sendOnClick,    // data: NULL
+	blinker,        // data: Color
+
 } Components;
 
 
-ComponentDef definitions[8];
+ComponentDef definitions[13];
 
 void initDefs();
+void updateMaterial(MeshData);
+void wireConnect(Object* from, Object* to);
 
 #endif

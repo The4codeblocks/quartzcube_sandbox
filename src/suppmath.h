@@ -107,11 +107,27 @@ inline vec3 vec3fromv(const Vector3 v) {
 	};
 };
 
-inline vec3 vec3scale(const vec3 v, double n) {
+inline Vector3 vec3tov(const vec3 v) {
+	return (Vector3) {
+		v.x,
+		v.y,
+		v.z,
+	};
+};
+
+inline vec3 vec3scale(const vec3 v, const double n) {
 	return (vec3) {
 		v.x * n,
 		v.y * n,
 		v.z * n,
+	};
+};
+
+inline pos3 pos3avg(const pos3 u, const pos3 v) {
+	return (pos3) {
+		(u.x + v.x) * 0.5,
+		(u.y + v.y) * 0.5,
+		(u.z + v.z) * 0.5,
 	};
 };
 
@@ -168,5 +184,11 @@ inline cstr copyNTstring(char* NTstring) { // Copies a [n]ull-[t]erminated strin
 
 	return (cstr) { data, length };
 }
+
+typedef enum {
+	dirU, dirD,
+	dirR, dirL,
+	dirF, dirB,
+} directionOrtho;
 
 #endif

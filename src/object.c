@@ -37,6 +37,7 @@ Component* addComponent(Object* object, ComponentDef* def) {
 	Component* components = object->components;
 	Component* component = malloc(sizeof(Component));
 	component->def = def;
+	component->data = NULL;
 	component->next = components;
 	component->prev = NULL;
 	component->obj = object;
@@ -60,7 +61,9 @@ void eliminateComponent(Component* component) {
 void copyComponents(Object* target, Object* from) {
 	Component* comp = from->components;
 	while (comp) {
-		addComponent(target, comp->def);
+		ComponentDef* def = comp->def;
+		Component* newcomp = addComponent(target, def);
+		if (def->serialize) def->deserialize(newcomp, def->serialize(*comp));
 		comp = comp->next;
 	}
 }
