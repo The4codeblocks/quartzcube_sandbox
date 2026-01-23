@@ -215,6 +215,9 @@ void drawInit() {
 	// Load a texture from the resources directory
 	wabbit = LoadTexture("wabbit_alpha.png");
 	brickMesh = GenMeshCube(1.0, 1.0, 1.0);
+	planeMesh = GenMeshPlane(1.0, 1.0, 1, 1);
+	wireModel = LoadModel("cable.obj");
+	spoolMesh = wireModel.meshes[0];
 
 	defaultMat = LoadMaterialDefault();
 

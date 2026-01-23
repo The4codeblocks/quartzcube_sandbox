@@ -68,6 +68,9 @@ RenderTexture2D rndt;
 Texture wabbit;
 Shader transmission;
 Mesh brickMesh;
+Mesh planeMesh;
+Model wireModel;
+Mesh spoolMesh;
 
 int winWidth;
 int winHeight;

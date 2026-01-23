@@ -109,9 +109,9 @@ inline vec3 vec3fromv(const Vector3 v) {
 
 inline Vector3 vec3tov(const vec3 v) {
 	return (Vector3) {
-		v.x,
-		v.y,
-		v.z,
+		(float)v.x,
+		(float)v.y,
+		(float)v.z,
 	};
 };
 
@@ -147,6 +147,10 @@ inline orientation rotateOrientationAxisAngle(orientation ori, Vector3 axis, flo
 		Vector3RotateByAxisAngle(ori.forth, axis, angle),
 		Vector3RotateByAxisAngle(ori.up,    axis, angle),
 	};
+}
+
+inline Vector3 getRight(orientation ori) {
+	return Vector3CrossProduct(ori.up, ori.forth);
 }
 
 inline Quaternion QuaternionFromOrientationToOrientation(orientation from, orientation to) {
@@ -186,6 +190,7 @@ inline cstr copyNTstring(char* NTstring) { // Copies a [n]ull-[t]erminated strin
 }
 
 typedef enum {
+	dirNone = 0,
 	dirU, dirD,
 	dirR, dirL,
 	dirF, dirB,

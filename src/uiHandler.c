@@ -74,6 +74,7 @@ UIobject* getPointed() {
 
 void send(UIinteraction event) {
 	UIobject* ID = getPointed();
+	printf("%p\n", ID);
 	if (ID) {
 		UIobject obj = *(UIobject*)ID;
 		Component* comp = obj.obj->components;

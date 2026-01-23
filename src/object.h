@@ -24,8 +24,6 @@ typedef struct { // in-world object
 	Component* components; // component linked list
 
 	ObjectNode* node; // carrier node backpointer
-
-	void* data; // arbitrary data structure
 } Object;
 
 struct Component {

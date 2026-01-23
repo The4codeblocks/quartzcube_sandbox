@@ -39,6 +39,7 @@ Component* addComponent(Object* object, ComponentDef* def) {
 	component->def = def;
 	component->data = NULL;
 	component->next = components;
+	if (components) components->prev = component;
 	component->prev = NULL;
 	component->obj = object;
 	object->components = component;

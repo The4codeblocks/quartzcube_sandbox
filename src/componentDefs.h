@@ -33,28 +33,50 @@ typedef struct {
 	vec3 acceleration;
 } VelocityData;
 
+typedef struct {
+	int index;
+	Material mat;
+	RenderTexture2D textbox;
+} SpawnToolData;
+
+typedef struct {
+	Object* from;
+	Object* to;
+} ObjectPair;
+
 
 typedef enum {
 	drawMesh,       // data: MeshData
+	drawMeshOpaque, // data: MeshData
 	drawEmerald,    // data: MeshData
 	UImesh,         // data: UIscalable.scl
+
 	velocity,       // data: VelocityData
 	lifetime,       // data: float
 	copyOnClick,    // data: NULL
 	controllable,   // data: NULL
+
 	particleCannon, // data: NULL
 	physics,        // data: <this is not done>
 	wireable,       // data: LinkedList<Object*>
 	sendOnClick,    // data: NULL
+
 	blinker,        // data: Color
+	avatar,         // data: Object (avoiding redundant indirection)
+	equippable,     // data: NULL
+	spawnTool,      // data: NULL
+
+	wiring,         // data: ObjectPair
+	sendOnSignal,   // data: NULL
 
 } Components;
 
 
-ComponentDef definitions[13];
+ComponentDef definitions[18];
 
 void initDefs();
 void updateMaterial(MeshData);
 void wireConnect(Object* from, Object* to);
+Component* findFirstComponent(Object*, ComponentDef*);
 
 #endif

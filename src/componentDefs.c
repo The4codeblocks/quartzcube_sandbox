@@ -10,6 +10,8 @@
 
 #include "componentDefs.h"
 
+#include "spawntool.h"
+
 #define matrixScale(x, y, z) (Matrix){ x, 0.0f, 0.0f, 0.0f, 0.0f, y, 0.0f, 0.0f, 0.0f, 0.0f, z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f }
 /*
 typedef struct {
@@ -136,6 +138,7 @@ void cannonInput(Component* comp, dataChannel channel, cstr data) {
 
 
 Component* findFirstComponent(Object* obj, ComponentDef* def) { // O(n), finds 1st component matching given definition
+	if (!obj) return NULL;
 	Component* comp = obj->components;
 	while (comp) {
 		ComponentDef* ndef = comp->def;
@@ -175,7 +178,7 @@ void wireable_elim(Component* comp) {
 
 
 void copyOnClick_UIaction(Component* comp, dataChannel channel, cstr data) {
-	if (data.length >= 3 & channel == click) {
+	if ((data.length >= 3) & (channel == click)) {
 		ClickAction act = *(ClickAction*)data.data;
 		if (act.id == solid)
 		if (act.action & ui_DLMB) {
@@ -194,19 +197,34 @@ void paint(Component* comp, Color col) {
 }
 
 void controllable_UIaction(Component* comp, dataChannel channel, cstr data) {
-	if (data.length >= 3 & channel == click) {
+	if ((data.length >= 3) & (channel == click)) {
 		ClickAction act = *(ClickAction*)data.data;
 		if (act.id == solid)
 		if (act.action & ui_DLMB) setControlled(comp->obj);
 	}
 }
 
+void equippable_UIaction(Component* comp, dataChannel channel, cstr data) {
+	if ((data.length >= 3) & (channel == click)) {
+		ClickAction act = *(ClickAction*)data.data;
+		if (act.id == solid)
+		if (act.action & ui_DLMB) {
+			Component* avatarComp = findFirstComponent(controlled, &definitions[avatar]);
+			if (controlled && avatarComp) avatarComp->data = comp->obj;
+		}
+	}
+}
+
 void sendOnClick_UIaction(Component* comp, dataChannel channel, cstr data) {
-	if (data.length >= 3 & channel == click) {
+	if ((data.length >= 3) & (channel == click)) {
 		ClickAction act = *(ClickAction*)data.data;
 		if (act.id == solid)
 		if (act.action & ui_DLMB) wireSendAll(comp->obj, (cstr) { 0 });
 	}
+}
+
+void sendOnSignal_recieve(Component* comp, dataChannel channel, cstr data) {
+	if (channel == wire) wireSendAll(comp->obj, data);
 }
 
 void blinker_recieve(Component* comp, dataChannel channel, cstr data) {
@@ -218,6 +236,13 @@ void blinker_recieve(Component* comp, dataChannel channel, cstr data) {
 	}
 }
 
+void initObjectPair(Component* comp) {
+	comp->data = calloc(1, sizeof(ObjectPair));
+}
+
+void initInt(Component* comp) {
+	comp->data = malloc(sizeof(int));
+}
 
 void initFloat(Component* comp) {
 	comp->data = malloc(sizeof(float));
@@ -306,7 +331,7 @@ void drawMesh_init(Component* comp) {
 
 void drawMesh_draw(Component* comp) {
 	Object* object = comp->obj;
-	vec3 pos = vec3subPP(object->pos, camPos);
+	Vector3 pos = vec3tov(vec3subPP(object->pos, camPos));
 
 	Matrix translation = MatrixTranslate(pos.x, pos.y, pos.z);
 	Matrix rotation = QuaternionToMatrix(QuaternionFromOrientationToOrientation((orientation) { 0, 0, 1, 0, 1, 0 }, object->orientation));
@@ -319,6 +344,26 @@ void drawMesh_draw(Component* comp) {
 		data.mat,
 		MatrixMultiply(MatrixScale(data.part.scale.x, data.part.scale.y, data.part.scale.z), move),
 		.isTransparent = true
+	});
+}
+
+void drawMeshOpaque_draw(Component* comp) {
+	Object* object = comp->obj;
+	Vector3 pos = vec3tov(vec3subPP(object->pos, camPos));
+
+	Matrix translation = MatrixTranslate(pos.x, pos.y, pos.z);
+	Matrix rotation = QuaternionToMatrix(QuaternionFromOrientationToOrientation((orientation) { 0, 0, 1, 0, 1, 0 }, object->orientation));
+	Matrix move = MatrixMultiply(rotation, translation);
+
+	MeshData data = (*(MeshData*)(comp->data));
+
+	data.mat.maps[MATERIAL_MAP_TRANSMIT].color = object == controlled ? GRAY : WHITE;
+
+	pushElement((RenderElement) {
+		data.mesh,
+		data.mat,
+		MatrixMultiply(MatrixScale(data.part.scale.x, data.part.scale.y, data.part.scale.z), move),
+		.isTransparent = object == controlled
 	});
 }
 
@@ -342,11 +387,133 @@ void wireable_draw(Component* comp) {
 }
 
 
+void avatar_tick(Component* comp) {
+	Object* object = comp->obj;
+	Object* tool = comp->data;
+	if (tool) {
+		tool->pos = vec3addPv(object->pos, getRight(object->orientation));
+		tool->orientation = object->orientation;
+	}
+}
+
+void avatar_recieve(Component* comp, dataChannel channel, cstr data) {
+	Object* object = comp->obj;
+	switch(channel) {
+	case interact:
+	case paginate:
+		if (comp->data) sendSignal(comp->data, channel, data);
+		break;
+	case moveTo:
+		if (data.length < 24) break;
+		object->pos = *(pos3*)(data.data);
+		break;
+	case orient:
+		if (data.length < 24) break;
+		object->orientation = *(orientation*)(data.data);
+		break;
+	}
+}
+
+
+void wiring_recieve(Component* comp, dataChannel channel, cstr data) {
+	Object* object = comp->obj;
+	switch (channel) {
+	case interact:
+		UIinteraction action = *(UIinteraction*)data.data;
+		if ((data.length >= 2) && (action & (ui_DLMB | ui_DRMB))) {
+			ObjectPair* pair = comp->data;
+			UIobject* pointed = getPointed();
+			if (action & ui_DLMB) pair->to = pointed ? pointed->obj : NULL;
+			if (action & ui_DRMB) pair->from = pointed ? pointed->obj : NULL;
+			if (pair->to && pair->from && (pair->to != pair->from))
+				wireConnect(pair->from, pair->to);
+		}
+		break;
+	}
+}
+
+
+void spawnTool_recieve(Component* comp, dataChannel channel, cstr data) {
+	Object* object = comp->obj;
+	switch (channel) {
+	case interact:
+		if (data.length >= 2 && (*(UIinteraction*)data.data) & ui_DLMB) spawnElement(vec3addPv(object->pos, Vector3Scale(object->orientation.forth, 4.0)), object->orientation, *(int*)comp->data);
+		break;
+	case paginate:
+		if (data.length >= 1) {
+			int* idx = &((SpawnToolData*)comp->data)->index;
+			directionOrtho dir = ((directionOrtho) * (char*)data.data);
+			switch (dir) {
+			case dirF:
+			case dirL:
+			case dirU:
+				(*idx) = (((*idx) - 1) & 3);
+				break;
+			case dirB:
+			case dirR:
+			case dirD:
+				(*idx) = (((*idx) + 1) & 3);
+				break;
+			}
+		}
+		break;
+	}
+}
+
+void spawnTool_init(Component* comp) {
+	SpawnToolData* data = malloc(sizeof(SpawnToolData));
+	data->index = 0;
+	data->mat = createTransmitMaterial();
+	data->textbox = LoadRenderTexture(128, 32);
+	data->mat.maps[MATERIAL_MAP_DIFFUSE].texture = data->textbox.texture;
+	comp->data = data;
+}
+
+void spawnTool_draw(Component* comp) {
+	Object* object = comp->obj;
+	SpawnToolData* data = comp->data;
+	char* name = elements[data->index].name;
+	EndMode3D();
+	EndTextureMode();
+	BeginTextureMode(data->textbox);
+	ClearBackground(BLACK);
+	DrawTextPro(GetFontDefault(), name, (Vector2) { 0.0, 0.0 }, (Vector2) { 0.0, 0.0 }, 0.0, 16.0, 2.0, WHITE);
+	EndTextureMode();
+	BeginTextureMode(rndt);
+	BeginMode3D(mainCam);
+
+	Vector3 pos = vec3tov(vec3subPP(object->pos, camPos));
+
+	Matrix translation = MatrixTranslate(pos.x, pos.y, pos.z);
+	Matrix rotation = QuaternionToMatrix(QuaternionFromOrientationToOrientation((orientation) { 0, 0, 1, 0, 1, 0 }, object->orientation));
+	Matrix move = MatrixMultiply(MatrixMultiply(MatrixScale(1.0, 0.25, 0.25), MatrixRotateX(-PI/2.0)), MatrixMultiply(MatrixMultiply(MatrixTranslate(0.75, 0, 0), rotation), translation));
+
+	pushElement((RenderElement) {
+		planeMesh,
+		data->mat,
+		move,
+		true,
+	});
+}
+
+void spawnTool_elim(Component* comp) {
+	SpawnToolData* data = comp->data;
+	UnloadRenderTexture(data->textbox);
+	unloadTransmitMaterial(data->mat);
+	free(data);
+}
+
 void initDefs() {
 	
 	definitions[drawMesh] = (ComponentDef){
 		.init = drawMesh_init,
 		.draw = drawMesh_draw,
+		.elim = drawMesh_elim,
+	};
+
+	definitions[drawMeshOpaque] = (ComponentDef){
+		.init = drawMesh_init,
+		.draw = drawMeshOpaque_draw,
 		.elim = drawMesh_elim,
 	};
 
@@ -401,4 +568,29 @@ void initDefs() {
 		.elim = freeData,
 	};
 
+	definitions[avatar] = (ComponentDef){
+		.tick = avatar_tick,
+		.recieve = avatar_recieve,
+	};
+
+	definitions[equippable] = (ComponentDef){
+		.recieve = equippable_UIaction
+	};
+
+	definitions[spawnTool] = (ComponentDef){
+		.init = spawnTool_init,
+		.draw = spawnTool_draw,
+		.recieve = spawnTool_recieve,
+		.elim = spawnTool_elim,
+	};
+
+	definitions[wiring] = (ComponentDef){
+		.init = initObjectPair,
+		.recieve = wiring_recieve,
+		.elim = freeData,
+	};
+
+	definitions[sendOnSignal] = (ComponentDef){
+		.recieve = sendOnSignal_recieve
+	};
 }

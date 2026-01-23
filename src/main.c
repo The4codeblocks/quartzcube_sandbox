@@ -40,20 +40,35 @@ int main()
 
 	SetExitKey(-1);
 	SetMousePosition(winXCenter, winYCenter);
-	
+
 	{
-		Object* obj = createObject((pos3) { 4, 0, 0 }, (cstr) { NULL, 0 });
-		addComponent(obj, &definitions[controllable]);
-		addComponent(obj, &definitions[particleCannon]);
-		MeshData* md = addComponent(obj, &definitions[drawMesh])->data;
-		md->mesh = brickMesh;
-		md->part.col = RAYWHITE;
-		md->part.absorption = WHITE;
-		md->part.scale = (Vector3){ 1.0, 1.0, 2.0 };
-		updateMaterial(*md);
-		UIscalable* ui = addComponent(obj, &definitions[UImesh])->data;
+		Object* object = createObject((pos3) { 4, 0, 0 }, (cstr) { NULL, 0 });
+		addComponent(object, &definitions[spawnTool]);
+		addComponent(object, &definitions[equippable]);
+		UIscalable* ui = addComponent(object, &definitions[UImesh])->data;
 		ui->scl.mesh = brickMesh;
-		ui->scl.scale = (Vector3){ 1.0, 1.0, 2.0 };
+		ui->scl.scale = (Vector3){ 0.25, 0.25, 0.25 };
+		MeshData* md = addComponent(object, &definitions[drawMesh])->data;
+		md->mesh = brickMesh;
+		md->part.col = LIGHTGRAY;
+		md->part.absorption = WHITE;
+		md->part.scale = (Vector3){ 0.25, 0.25, 0.25 };
+		updateMaterial(*md);
+	}
+
+	{
+		Object* object = createObject((pos3) { 2, 0, 0 }, (cstr) { NULL, 0 });
+		addComponent(object, &definitions[avatar]);
+		UIscalable* ui = addComponent(object, &definitions[UImesh])->data;
+		ui->scl.mesh = brickMesh;
+		ui->scl.scale = (Vector3){ 1.0, 1.0, 1.0 };
+		addComponent(object, &definitions[controllable]);
+		MeshData* md = addComponent(object, &definitions[drawMeshOpaque])->data;
+		md->mesh = brickMesh;
+		md->part.col = WHITE;
+		md->part.absorption = WHITE;
+		md->part.scale = (Vector3){ 1.0, 1.0, 1.0 };
+		updateMaterial(*md);
 	}
 
 	{
@@ -83,6 +98,9 @@ int main()
 			md->part.absorption = WHITE;
 			md->part.scale = (Vector3){ 0.25, 0.25, 0.25 };
 			updateMaterial(*md);
+			UIscalable* ui = addComponent(dest, &definitions[UImesh])->data;
+			ui->scl.mesh = brickMesh;
+			ui->scl.scale = (Vector3){ 0.25, 0.25, 0.25 };
 			*(Color*)addComponent(dest, &definitions[blinker])->data = (Color){0,255,0,255};
 		}
 
@@ -101,17 +119,13 @@ int main()
 			mouseLocked = false;
 			ShowCursor();
 		}
-
+		
 		if (IsKeyPressed(KEY_TAB)) {
-			if (IsKeyDown(KEY_LEFT_CONTROL)) {
-				controlled = NULL;
+			if (IsKeyDown(KEY_LEFT_CONTROL)) controlled = NULL;
+			if (controlled && IsKeyDown(KEY_LEFT_SHIFT)) {
+				Component* avatarComp = findFirstComponent(controlled, &definitions[avatar]);
+				if (controlled && avatarComp) avatarComp->data = NULL;
 			}
-		}
-
-		if (!mouseLocked & IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-			mouseLocked = true;
-			HideCursor();
-			SetMousePosition(winXCenter, winYCenter);
 		}
 		
 		if (!IsWindowFocused()) {
@@ -126,13 +140,19 @@ int main()
 			updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
 		}
 
+		orientation targetOri = camOri;
+		bool update = false;
+		if (IsKeyDown(KEY_R)) {
+			targetOri = rotateOrientationAxisAngle(targetOri, targetOri.forth, -dt);
+			update = true;
+		}
+		if (IsKeyDown(KEY_F)) {
+			targetOri = rotateOrientationAxisAngle(targetOri, targetOri.forth, dt);
+			update = true;
+		}
 		if (!controlled) {
-			if (IsKeyDown(KEY_R)) {
-				camOri = rotateOrientationAxisAngle(camOri, camOri.forth, -dt);
-				updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
-			}
-			if (IsKeyDown(KEY_F)) {
-				camOri = rotateOrientationAxisAngle(camOri, camOri.forth, dt);
+			if (update) {
+				camOri = targetOri;
 				updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
 			}
 		}
@@ -147,11 +167,12 @@ int main()
 				ComponentDef* def = comp->def;
 				if (def->recieve) {
 					def->recieve(comp, moveTo, moveTo_(vec3addPv(camPos, movement)));
-					def->recieve(comp, orient, orient_(projectOrientation(camOri, comp->obj->orientation.up)));
+					def->recieve(comp, orient, orient_(projectOrientation(targetOri, comp->obj->orientation.up)));
 				}
 				comp = comp->next;
 			}
 			camPos = controlled->pos;
+			camOri.up = controlled->orientation.up;
 			camOri = rotateOrientationAxisAngle(camOri, camOri.up, (GetMouseX() - winXCenter) * sensitivity);
 			updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
 			mainCam.position = Vector3Scale(camFace.forth, -4.0);
@@ -175,26 +196,41 @@ int main()
 
 		drawMain();
 		UIMain();
-		
-		unsigned short action = 0;
-		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT   )) action = action | ui_DLMB;
-		if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT  )) action = action | ui_DRMB;
-		if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE )) action = action | ui_DMMB;
-		if (IsMouseButtonPressed(MOUSE_BUTTON_SIDE   )) action = action | ui_DSMB;
-		if (IsMouseButtonPressed(MOUSE_BUTTON_EXTRA  )) action = action | ui_DEMB;
-		if (IsMouseButtonPressed(MOUSE_BUTTON_FORWARD)) action = action | ui_DFMB;
-		if (IsMouseButtonPressed(MOUSE_BUTTON_BACK   )) action = action | ui_DBMB;
-		if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT   )) action = action | ui_ULMB;
-		if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT  )) action = action | ui_URMB;
-		if (IsMouseButtonReleased(MOUSE_BUTTON_MIDDLE )) action = action | ui_UMMB;
-		if (IsMouseButtonReleased(MOUSE_BUTTON_SIDE   )) action = action | ui_USMB;
-		if (IsMouseButtonReleased(MOUSE_BUTTON_EXTRA  )) action = action | ui_UEMB;
-		if (IsMouseButtonReleased(MOUSE_BUTTON_FORWARD)) action = action | ui_UFMB;
-		if (IsMouseButtonReleased(MOUSE_BUTTON_BACK   )) action = action | ui_UBMB;
-		if (action) send(action);
+		if (mouseLocked) {
+			unsigned short action = 0;
+			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) action = action | ui_DLMB;
+			if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) action = action | ui_DRMB;
+			if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) action = action | ui_DMMB;
+			if (IsMouseButtonPressed(MOUSE_BUTTON_SIDE)) action = action | ui_DSMB;
+			if (IsMouseButtonPressed(MOUSE_BUTTON_EXTRA)) action = action | ui_DEMB;
+			if (IsMouseButtonPressed(MOUSE_BUTTON_FORWARD)) action = action | ui_DFMB;
+			if (IsMouseButtonPressed(MOUSE_BUTTON_BACK)) action = action | ui_DBMB;
+			if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) action = action | ui_ULMB;
+			if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) action = action | ui_URMB;
+			if (IsMouseButtonReleased(MOUSE_BUTTON_MIDDLE)) action = action | ui_UMMB;
+			if (IsMouseButtonReleased(MOUSE_BUTTON_SIDE)) action = action | ui_USMB;
+			if (IsMouseButtonReleased(MOUSE_BUTTON_EXTRA)) action = action | ui_UEMB;
+			if (IsMouseButtonReleased(MOUSE_BUTTON_FORWARD)) action = action | ui_UFMB;
+			if (IsMouseButtonReleased(MOUSE_BUTTON_BACK)) action = action | ui_UBMB;
 
-		if (controlled)
-		if (action) sendSignal(controlled, interact, interact_(action));
+			directionOrtho scrollDir = getScrollDir();
+			if (scrollDir) {
+				if (controlled) sendSignal(controlled, paginate, paginate_(scrollDir));
+				UIobject* ID = getPointed();
+				if (ID) sendSignal(ID->obj, scroll, scroll_(scrollDir, ID->type));
+			}
+
+			if (controlled && action)
+				sendSignal(controlled, interact, interact_(action));
+			if (action) send(action);
+		}
+
+		if (!mouseLocked & IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+			mouseLocked = true;
+			HideCursor();
+			SetMousePosition(winXCenter, winYCenter);
+		}
+		//if (!IsWindowFocused()) mouseLocked = false;
 
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();

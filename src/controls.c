@@ -12,3 +12,16 @@ Vector3 getMovement() {
 	if (IsKeyDown(KEY_Q)) movementN = Vector3Add(movementN, camFace.up);
 	return Vector3Subtract(movementP, movementN);
 }
+
+float scrollErr = 0;
+
+directionOrtho getScrollDir() {
+	scrollErr += GetMouseWheelMove(); // U+, D-
+	if (scrollErr > 0.5) {
+		scrollErr -= 1.0;
+		return IsKeyDown(KEY_LEFT_CONTROL) ? dirF : IsKeyDown(KEY_LEFT_SHIFT) ? dirL : dirU;
+	} else if (scrollErr < -0.5) {
+		scrollErr += 1.0;
+		return IsKeyDown(KEY_LEFT_CONTROL) ? dirB : IsKeyDown(KEY_LEFT_SHIFT) ? dirR : dirD;
+	} else return dirNone;
+};
