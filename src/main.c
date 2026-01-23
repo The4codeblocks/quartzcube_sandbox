@@ -71,42 +71,6 @@ int main()
 		updateMaterial(*md);
 	}
 
-	{
-		Object* source;
-		Object* dest;
-
-		{
-			source = createObject((pos3) { -4, 4, 0 }, (cstr) { NULL, 0 });
-			UIscalable* ui = addComponent(source, &definitions[UImesh])->data;
-			ui->scl.mesh = brickMesh;
-			ui->scl.scale = (Vector3){ 0.25, 0.25, 0.25 };
-			addComponent(source, &definitions[sendOnClick]);
-			addComponent(source, &definitions[wireable]);
-			MeshData* md = addComponent(source, &definitions[drawMesh])->data;
-			md->mesh = brickMesh;
-			md->part.col = RED;
-			md->part.absorption = WHITE;
-			md->part.scale = (Vector3){ 0.25, 0.25, 0.25 };
-			updateMaterial(*md);
-		}
-
-		{
-			dest = createObject((pos3) { -4, 0, 0 }, (cstr) { NULL, 0 });
-			MeshData* md = addComponent(dest, &definitions[drawMesh])->data;
-			md->mesh = brickMesh;
-			md->part.col = GRAY;
-			md->part.absorption = WHITE;
-			md->part.scale = (Vector3){ 0.25, 0.25, 0.25 };
-			updateMaterial(*md);
-			UIscalable* ui = addComponent(dest, &definitions[UImesh])->data;
-			ui->scl.mesh = brickMesh;
-			ui->scl.scale = (Vector3){ 0.25, 0.25, 0.25 };
-			*(Color*)addComponent(dest, &definitions[blinker])->data = (Color){0,255,0,255};
-		}
-
-		wireConnect(source, dest);
-	}
-
 	// game loop
 	while (!WindowShouldClose())		// run the loop untill the user presses the Close button on the window
 	{
@@ -167,7 +131,7 @@ int main()
 				ComponentDef* def = comp->def;
 				if (def->recieve) {
 					def->recieve(comp, moveTo, moveTo_(vec3addPv(camPos, movement)));
-					def->recieve(comp, orient, orient_(projectOrientation(targetOri, comp->obj->orientation.up)));
+					def->recieve(comp, orient, orient_(targetOri));
 				}
 				comp = comp->next;
 			}

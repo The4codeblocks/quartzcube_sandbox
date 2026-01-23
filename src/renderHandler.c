@@ -201,7 +201,7 @@ void drawInit() {
 	mainCam = (Camera3D){ {0,0,0}, camOri.forth, camOri.up, 90.0, CAMERA_PERSPECTIVE };
 	
 	// Create the window and OpenGL context
-	InitWindow(1280, 800, "Hello Raylib");
+	InitWindow(1280, 800, "Quartzcube Sandbox");
 
 	winWidth = GetScreenWidth();
 	winHeight = GetScreenHeight();
@@ -255,14 +255,13 @@ void drawMain() {
 
 	drawAll();
 	clearAll();
-
+	/*
 	DrawLine3D((Vector3) { 0, -4, 4 }, Vector3Add(Vector3Scale(camOri.forth, 4.0), (Vector3) { 0, -4, 4 }), RED);
 	DrawLine3D((Vector3) { 0, -4, 4 }, Vector3Add(camOri.up, (Vector3){ 0, -4, 4 }), GREEN);
 	orientation exp = rotateOrientationQuaternion((orientation) { 0, 0, 1, 0, 1, 0 }, QuaternionFromOrientationToOrientation((orientation) { 0, 0, 1, 0, 1, 0 }, camOri));
-	printf("\n%.2f\n", (Vector3Distance(Vector3RotateByQuaternion((Vector3) { 0, 0, 1 }, QuaternionFromVector3ToVector3((Vector3) { 0, 0, 1 }, camOri.forth)), camOri.forth)));
 	DrawLine3D((Vector3) { 0.1, -4, 4 }, Vector3Add(Vector3Scale(exp.forth, 4.0), (Vector3) { 0.1, -4, 4 }), PURPLE);
 	DrawLine3D((Vector3) { 0.1, -4, 4 }, Vector3Add(exp.up, (Vector3){ 0.1, -4, 4 }), WHITE);
-
+	*/
 	EndMode3D();
 	EndTextureMode();
 	DrawTextureEx(rndt.texture, (Vector2) { winWidth, winHeight }, 180.0, 1.0, WHITE);
