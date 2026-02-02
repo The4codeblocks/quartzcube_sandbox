@@ -252,6 +252,23 @@ void initColor(Component* comp) {
 	comp->data = malloc(sizeof(Color));
 }
 
+void painter_init(Component* comp) {
+	PainterData* data = malloc(sizeof(PainterData));
+	data->col = WHITE;
+	data->selected = 0;
+	data->matR = createTransmitMaterial();
+	data->matG = createTransmitMaterial();
+	data->matB = createTransmitMaterial();
+	data->matA = createTransmitMaterial();
+	data->mat  = createTransmitMaterial();
+	data->matR.maps->color = (Color){ 255, 0, 0, 255 };
+	data->matG.maps->color = (Color){ 0, 255, 0, 255 };
+	data->matB.maps->color = (Color){ 0, 0, 255, 255 };
+	data->matA.maps->color = (Color){ 255, 255, 255, 255 };
+	data->mat .maps->color = (Color){ 255, 255, 255, 255 };
+	comp->data = data;
+}
+
 
 void lifetime_tick(Component* comp, float dt) {
 	float* data = comp->data;
@@ -433,11 +450,59 @@ void wiring_recieve(Component* comp, dataChannel channel, cstr data) {
 }
 
 
+void painter_recieve(Component* comp, dataChannel channel, cstr data) {
+	Object* object = comp->obj;
+	PainterData* cdata = comp->data;
+	switch (channel) {
+	case interact:
+		if (data.length >= 2) {
+			UIobject* pointed = getPointed();
+			if (pointed) {
+				UIinteraction action = *(UIinteraction*)data.data;
+				if (action & ui_DLMB) paint(findFirstComponent(pointed->obj, &definitions[drawMesh]), cdata->col);
+				if (action & ui_DRMB) {
+					Component* meshComp = findFirstComponent(pointed->obj, &definitions[drawMesh]);
+					if (meshComp) cdata->col = ((MeshData*)(meshComp->data))->part.col;
+				}
+			}
+		}
+		break;
+	case paginate:
+		if (data.length >= 1) {
+			directionOrtho dir = ((directionOrtho) * (char*)data.data);
+			int idx = cdata->selected & 3;
+			switch (dir) {
+			case dirU:
+				((unsigned char*)cdata)[idx] = min(((unsigned char*)cdata)[idx] + 16, 255);
+				break;
+			case dirD:
+				((unsigned char*)cdata)[idx] = max(((unsigned char*)cdata)[idx] - 16, 0);
+				break;
+			case dirF:
+				((unsigned char*)cdata)[idx] = min(((unsigned char*)cdata)[idx] + 1, 255);
+				break;
+			case dirB:
+				((unsigned char*)cdata)[idx] = max(((unsigned char*)cdata)[idx] - 1, 0);
+				break;
+			case dirL:
+				cdata->selected--;
+				break;
+			case dirR:
+				cdata->selected++;
+				break;
+			}
+			printf("%d, %d, %d, %d, %d\n", cdata->col.r, cdata->col.g, cdata->col.b, cdata->col.a, cdata->selected);
+		}
+		break;
+	}
+}
+
+
 void spawnTool_recieve(Component* comp, dataChannel channel, cstr data) {
 	Object* object = comp->obj;
 	switch (channel) {
 	case interact:
-		if (data.length >= 2 && (*(UIinteraction*)data.data) & ui_DLMB) spawnElement(vec3addPv(object->pos, Vector3Scale(object->orientation.forth, 4.0)), object->orientation, *(int*)comp->data);
+		if (data.length >= 2 && (*(UIinteraction*)data.data) & ui_DLMB) spawnElement(pos3round(vec3addPv(object->pos, Vector3Scale(object->orientation.forth, 2.0)), (pos3) { 0 }, (vec3) { 0.25, 0.25, 0.25 }), (Vector3) { 0.25, 0.25, 0.25 }, object->orientation, *(int*)comp->data);
 		break;
 	case paginate:
 		if (data.length >= 1) {
@@ -447,12 +512,12 @@ void spawnTool_recieve(Component* comp, dataChannel channel, cstr data) {
 			case dirF:
 			case dirL:
 			case dirU:
-				(*idx) = (((*idx) - 1) & 3);
+				(*idx) = wrapInt((*idx) - 1, 0, elementCount);
 				break;
 			case dirB:
 			case dirR:
 			case dirD:
-				(*idx) = (((*idx) + 1) & 3);
+				(*idx) = wrapInt((*idx) + 1, 0, elementCount);
 				break;
 			}
 		}
@@ -494,6 +559,59 @@ void spawnTool_draw(Component* comp) {
 		move,
 		true,
 	});
+
+	ghostElement(pos3round(vec3addPv(object->pos, Vector3Scale(object->orientation.forth, 2.0)), (pos3) { 0 }, (vec3) { 0.25, 0.25, 0.25 }), (Vector3) { 0.25, 0.25, 0.25 }, object->orientation, * (int*)comp->data);
+}
+
+void painter_draw(Component* comp) {
+	Object* object = comp->obj;
+	PainterData* data = comp->data;
+	Color col = data->col;
+	int selection = data->selected;
+
+	Vector3 pos = vec3tov(vec3subPP(object->pos, camPos));
+
+	Matrix translation = MatrixTranslate(pos.x, pos.y, pos.z);
+	Matrix rotation = QuaternionToMatrix(QuaternionFromOrientationToOrientation((orientation) { 0, 0, 1, 0, 1, 0 }, object->orientation));
+	Matrix move = MatrixMultiply(MatrixMultiply(MatrixScale(1.0, 0.25, 0.25), MatrixRotateX(-PI / 2.0)), MatrixMultiply(MatrixMultiply(MatrixTranslate(0.75, 0, 0), rotation), translation));
+
+	data->mat.maps->color = data->col;
+
+	pushElement((RenderElement) {
+		brickMesh,
+		data->mat,
+		MatrixMultiply(MatrixMultiply(MatrixScale((0.25 * 6.0 / 16.0), (0.25 * 6.0 / 16.0), (0.25 * 6.0 / 16.0)), MatrixTranslate(0.0, 0, -0.125)), MatrixMultiply(rotation, translation)),
+		true,
+	});
+
+	pushElement((RenderElement) {
+		brickMesh,
+		data->matR,
+		MatrixMultiply(MatrixMultiply(MatrixMultiply(MatrixScale(0.03125, (0.25 * 10.0 / 16.0) * col.r / 255.0, 0.03125), MatrixTranslate(0.0, 0.125 * 5.0 / 16.0, -0.125)), MatrixRotateZ( selection      * -PI / 2.0)), MatrixMultiply(rotation, translation)),
+		false,
+	});
+
+	pushElement((RenderElement) {
+		brickMesh,
+		data->matG,
+		MatrixMultiply(MatrixMultiply(MatrixMultiply(MatrixScale(0.03125, (0.25 * 10.0 / 16.0) * col.g / 255.0, 0.03125), MatrixTranslate(0.0, 0.125 * 5.0 / 16.0, -0.125)), MatrixRotateZ((selection + 3) * - PI / 2.0)), MatrixMultiply(rotation, translation)),
+		false,
+	});
+
+	pushElement((RenderElement) {
+		brickMesh,
+		data->matB,
+		MatrixMultiply(MatrixMultiply(MatrixMultiply(MatrixScale(0.03125, (0.25 * 10.0 / 16.0) * col.b / 255.0, 0.03125), MatrixTranslate(0.0, 0.125 * 5.0 / 16.0, -0.125)), MatrixRotateZ((selection + 2) * -PI / 2.0)), MatrixMultiply(rotation, translation)),
+		false,
+	});
+
+	pushElement((RenderElement) {
+		brickMesh,
+		data->matA,
+		MatrixMultiply(MatrixMultiply(MatrixMultiply(MatrixScale(0.03125, (0.25 * 10.0 / 16.0) * col.a / 255.0, 0.03125), MatrixTranslate(0.0, 0.125 * 5.0 / 16.0, -0.125)), MatrixRotateZ((selection + 1) * -PI / 2.0)), MatrixMultiply(rotation, translation)),
+		false,
+	});
+
 }
 
 void spawnTool_elim(Component* comp) {
@@ -584,13 +702,20 @@ void initDefs() {
 		.elim = spawnTool_elim,
 	};
 
+	definitions[sendOnSignal] = (ComponentDef){
+		.recieve = sendOnSignal_recieve
+	};
+
 	definitions[wiring] = (ComponentDef){
 		.init = initObjectPair,
 		.recieve = wiring_recieve,
 		.elim = freeData,
 	};
 
-	definitions[sendOnSignal] = (ComponentDef){
-		.recieve = sendOnSignal_recieve
+	definitions[painter] = (ComponentDef){
+		.draw = painter_draw,
+		.init = painter_init,
+		.recieve = painter_recieve,
+		.elim = freeData,
 	};
 }

@@ -41,6 +41,8 @@ int main()
 	SetExitKey(-1);
 	SetMousePosition(winXCenter, winYCenter);
 
+	rootObjectNode = (void*)0;
+
 	{
 		Object* object = createObject((pos3) { 4, 0, 0 }, (cstr) { NULL, 0 });
 		addComponent(object, &definitions[spawnTool]);
@@ -138,13 +140,12 @@ int main()
 			camPos = controlled->pos;
 			camOri.up = controlled->orientation.up;
 			camOri = rotateOrientationAxisAngle(camOri, camOri.up, (GetMouseX() - winXCenter) * sensitivity);
+			mainCam.position = getZoom();
 			updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
-			mainCam.position = Vector3Scale(camFace.forth, -4.0);
-			mainCam.target = (Vector3){ 0 };
 		} else {
 			camPos = vec3addPv(camPos, movement);
-			updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
 			mainCam.position = (Vector3){ 0 };
+			updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
 		}
 		/*
 		if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
@@ -167,14 +168,14 @@ int main()
 			if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) action = action | ui_DMMB;
 			if (IsMouseButtonPressed(MOUSE_BUTTON_SIDE)) action = action | ui_DSMB;
 			if (IsMouseButtonPressed(MOUSE_BUTTON_EXTRA)) action = action | ui_DEMB;
-			if (IsMouseButtonPressed(MOUSE_BUTTON_FORWARD)) action = action | ui_DFMB;
+			//if (IsMouseButtonPressed(MOUSE_BUTTON_FORWARD)) action = action | ui_DFMB;
 			if (IsMouseButtonPressed(MOUSE_BUTTON_BACK)) action = action | ui_DBMB;
 			if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) action = action | ui_ULMB;
 			if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) action = action | ui_URMB;
 			if (IsMouseButtonReleased(MOUSE_BUTTON_MIDDLE)) action = action | ui_UMMB;
 			if (IsMouseButtonReleased(MOUSE_BUTTON_SIDE)) action = action | ui_USMB;
 			if (IsMouseButtonReleased(MOUSE_BUTTON_EXTRA)) action = action | ui_UEMB;
-			if (IsMouseButtonReleased(MOUSE_BUTTON_FORWARD)) action = action | ui_UFMB;
+			//if (IsMouseButtonReleased(MOUSE_BUTTON_FORWARD)) action = action | ui_UFMB;
 			if (IsMouseButtonReleased(MOUSE_BUTTON_BACK)) action = action | ui_UBMB;
 
 			directionOrtho scrollDir = getScrollDir();

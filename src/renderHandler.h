@@ -78,6 +78,9 @@ int winHeight;
 int winXCenter;
 int winYCenter;
 
+void zoomControl(directionOrtho);
+Vector3 getZoom();
+
 void updateCamControl(Camera3D*, orientation, float, Vector3*, orientation*);
 
 void drawInit();

@@ -44,6 +44,18 @@ typedef struct {
 	Object* to;
 } ObjectPair;
 
+typedef struct {
+	Color col;
+	unsigned char selected;
+
+	Material matR;
+	Material matG;
+	Material matB;
+	Material matA;
+
+	Material mat;
+} PainterData;
+
 
 typedef enum {
 	drawMesh,       // data: MeshData
@@ -68,11 +80,12 @@ typedef enum {
 
 	wiring,         // data: ObjectPair
 	sendOnSignal,   // data: NULL
+	painter,
 
 } Components;
 
 
-ComponentDef definitions[18];
+ComponentDef definitions[19];
 
 void initDefs();
 void updateMaterial(MeshData);

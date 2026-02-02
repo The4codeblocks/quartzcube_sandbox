@@ -153,35 +153,9 @@ inline Vector3 getRight(orientation ori) {
 	return Vector3CrossProduct(ori.up, ori.forth);
 }
 
-inline Quaternion otherQuaternionFromVector3ToVector3(Vector3 from, Vector3 to) {
-	Quaternion result = { 0 };
-
-	float cos2Theta = (from.x * to.x + from.y * to.y + from.z * to.z);    // Vector3DotProduct(from, to)
-	Vector3 cross = { from.y * to.z - from.z * to.y, from.z * to.x - from.x * to.z, from.x * to.y - from.y * to.x }; // Vector3CrossProduct(from, to)
-
-	result.x = cross.x;
-	result.y = cross.y;
-	result.z = cross.z;
-	result.w = sqrtf(cross.x * cross.x + cross.y * cross.y + cross.z * cross.z + cos2Theta * cos2Theta) + cos2Theta;
-
-	// QuaternionNormalize(q);
-	// NOTE: Normalize to essentially nlerp the original and identity to 0.5
-	Quaternion q = result;
-	float length = sqrtf(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
-	if (length == 0.0f) length = 1.0f;
-	float ilength = 1.0f / length;
-
-	result.x = q.x * ilength;
-	result.y = q.y * ilength;
-	result.z = q.z * ilength;
-	result.w = q.w * ilength;
-
-	return result;
-}
-
 inline Quaternion QuaternionFromOrientationToOrientation(orientation from, orientation to) {
-	Quaternion frontTransform = otherQuaternionFromVector3ToVector3(from.forth, to.forth);
-	Quaternion upError = otherQuaternionFromVector3ToVector3(Vector3RotateByQuaternion(from.up, frontTransform), to.up);
+	Quaternion frontTransform = QuaternionFromVector3ToVector3(from.forth, to.forth);
+	Quaternion upError = QuaternionFromVector3ToVector3(Vector3RotateByQuaternion(from.up, frontTransform), to.up);
 	Quaternion out = QuaternionMultiply(upError, frontTransform);
 	return out;
 }
@@ -193,6 +167,23 @@ inline orientation projectOrientation(orientation from, Vector3 on) {
 		projectedForth,
 		on,
 	};
+}
+
+inline vec3 vec3round(vec3 vec, vec3 prec) {
+	return (vec3) {
+		round(vec.x / prec.x)* prec.x,
+		round(vec.y / prec.y)* prec.y,
+		round(vec.z / prec.z)* prec.z,
+	};
+};
+
+inline pos3 pos3round(pos3 pos, pos3 origin, vec3 prec) {
+	return vec3addPV(origin, vec3round(vec3subPP(pos, origin), prec));
+};
+
+inline int wrapInt(int n, int min, int max) {
+	int diff = max - min;
+	return ((n - min) % diff + diff) % diff + min;
 }
 
 #define vec3addVP(a, b) vec3addPV(b, a)

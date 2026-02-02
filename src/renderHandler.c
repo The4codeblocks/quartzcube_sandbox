@@ -192,6 +192,31 @@ void updateCamControl(Camera3D* cam, orientation facing, float pitch, Vector3* r
 Material mat;
 int viewportShaderLocation;
 
+float zoom = -4.0;
+float shift = 0.0;
+float lift = 0.0;
+
+void zoomControl(directionOrtho dir) {
+	switch (dir) {
+	case dirU:
+		zoom ? zoom += 0.5 : 0; break;
+	case dirD:
+		zoom -= 0.5; break;
+	case dirF:
+		lift += 0.5; break;
+	case dirB:
+		lift -= 0.5; break;
+	case dirR:
+		shift += 0.5; break;
+	case dirL:
+		shift -= 0.5; break;
+	}
+}
+
+Vector3 getZoom() {
+	return Vector3Add(Vector3Add(Vector3Scale(camFace.forth, zoom), Vector3Scale(camFace.up, lift)), Vector3Scale(camR, shift));
+}
+
 void drawInit() {
 	// Tell the window to use vsync and work on high DPI displays
 	SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
@@ -246,8 +271,8 @@ void drawMain() {
 	//DrawBillboard(mainCam, wabbit, (Vector3) { 0.0, -2.0, 6.0 }, 1.0, WHITE);
 	//rlDrawRenderBatchActive();
 
-	float x = fmod(t * 2.0, 8.0) - 4.0;
-	Matrix m = MatrixMultiply(MatrixScale(1.0, 8.0, 1.0), MatrixTranslate(x, 0.0, 4.0));
+	//float x = fmod(t * 2.0, 8.0) - 4.0;
+	//Matrix m = MatrixMultiply(MatrixScale(1.0, 8.0, 1.0), MatrixTranslate(x, 0.0, 4.0));
 
 	//pushElement((RenderElement) { *(unitcube.meshes), mat, m });
 
