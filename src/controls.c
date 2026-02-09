@@ -31,3 +31,22 @@ directionOrtho getScrollDir() {
 	}
 	else return dir;
 };
+
+void parseNumberInputControl(NumberInput* in, directionOrtho scroll) {
+	switch (scroll) {
+	case dirU:
+		in->current += pow(10, in->increment);
+		break;
+	case dirD:
+		in->current -= pow(10, in->increment);
+		break;
+	case dirR:
+		++in->increment;
+		break;
+	case dirL:
+		--in->increment;
+		break;
+	}
+}; // WIP
+
+

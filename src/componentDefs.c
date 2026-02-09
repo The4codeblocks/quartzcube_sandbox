@@ -500,24 +500,24 @@ void painter_recieve(Component* comp, dataChannel channel, cstr data) {
 
 void spawnTool_recieve(Component* comp, dataChannel channel, cstr data) {
 	Object* object = comp->obj;
+	SpawnToolData* cdata = comp->data;
 	switch (channel) {
 	case interact:
 		if (data.length >= 2 && (*(UIinteraction*)data.data) & ui_DLMB) spawnElement(pos3round(vec3addPv(object->pos, Vector3Scale(object->orientation.forth, 2.0)), (pos3) { 0 }, (vec3) { 0.25, 0.25, 0.25 }), (Vector3) { 0.25, 0.25, 0.25 }, object->orientation, *(int*)comp->data);
 		break;
-	case paginate:
+	case paginate: // INTEND TO ADD GRID AND STUFF
 		if (data.length >= 1) {
-			int* idx = &((SpawnToolData*)comp->data)->index;
 			directionOrtho dir = ((directionOrtho) * (char*)data.data);
 			switch (dir) {
 			case dirF:
 			case dirL:
 			case dirU:
-				(*idx) = wrapInt((*idx) - 1, 0, elementCount);
+				cdata->index = wrapInt(cdata->index - 1, 0, elementCount);
 				break;
 			case dirB:
 			case dirR:
 			case dirD:
-				(*idx) = wrapInt((*idx) + 1, 0, elementCount);
+				cdata->index = wrapInt(cdata->index + 1, 0, elementCount);
 				break;
 			}
 		}
