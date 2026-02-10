@@ -171,9 +171,9 @@ inline orientation projectOrientation(orientation from, Vector3 on) {
 
 inline vec3 vec3round(vec3 vec, vec3 prec) {
 	return (vec3) {
-		round(vec.x / prec.x)* prec.x,
-		round(vec.y / prec.y)* prec.y,
-		round(vec.z / prec.z)* prec.z,
+		prec.x == 0 ? vec.x : round(vec.x / prec.x) * prec.x,
+		prec.y == 0 ? vec.y : round(vec.y / prec.y) * prec.y,
+		prec.z == 0 ? vec.z : round(vec.z / prec.z) * prec.z,
 	};
 };
 

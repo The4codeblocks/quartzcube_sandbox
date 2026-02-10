@@ -4,6 +4,7 @@
 
 #include "raylib.h"
 #include "object.h"
+#include "controls.h"
 #include "suppmath.h"
 
 typedef struct { // data for a rendered primitive
@@ -35,6 +36,8 @@ typedef struct {
 
 typedef struct {
 	int index;
+	int configIdx;
+	NumberInput gridsnap;
 	Material mat;
 	RenderTexture2D textbox;
 } SpawnToolData;

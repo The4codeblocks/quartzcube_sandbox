@@ -6,7 +6,7 @@
 
 RenderSortNode* renderedRoot = NULL;
 RenderSortNode* pooledRoot = NULL;
-
+#include "uiHandler.h"
 RenderSortNode* obtainPooledRenderNode() {
 	if (!pooledRoot) pooledRoot = calloc(1, sizeof(RenderSortNode));
 	RenderSortNode* out = pooledRoot;
@@ -226,7 +226,7 @@ void drawInit() {
 	mainCam = (Camera3D){ {0,0,0}, camOri.forth, camOri.up, 90.0, CAMERA_PERSPECTIVE };
 	
 	// Create the window and OpenGL context
-	InitWindow(1280, 800, "Quartzcube Sandbox");
+	InitWindow(1280, 800, "Quartzcube Sandbox"); SetTargetFPS(120);
 
 	winWidth = GetScreenWidth();
 	winHeight = GetScreenHeight();
@@ -291,7 +291,7 @@ void drawMain() {
 	EndTextureMode();
 	DrawTextureEx(rndt.texture, (Vector2) { winWidth, winHeight }, 180.0, 1.0, WHITE);
 	DrawLine(winXCenter - 10, winYCenter - 10, winXCenter + 10, winYCenter + 10, WHITE);
-	DrawLine(winXCenter - 10, winYCenter + 10, winXCenter + 10, winYCenter - 10, WHITE);
+	DrawLine(winXCenter - 10, winYCenter + 10, winXCenter + 10, winYCenter - 10, WHITE); DrawFPS(16, 16);
 
 }
 

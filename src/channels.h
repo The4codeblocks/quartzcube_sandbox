@@ -48,27 +48,27 @@ ScrollAction scroll_temp;
 
 inline cstr moveTo_(pos3 pos) {
 	moveTo_temp = pos;
-	return (cstr) { .data = &moveTo_temp, 24 };
+	return (cstr) { .data = &moveTo_temp, sizeof(moveTo_temp) };
 }
 
 inline cstr orient_(orientation ori) {
 	orient_temp = ori;
-	return (cstr) { .data = &orient_temp, 24 };
+	return (cstr) { .data = &orient_temp, sizeof(orient_temp) };
 }
 
 inline cstr interact_(UIinteraction action) {
 	interact_temp = action;
-	return (cstr) { .data = &interact_temp, 2 };
+	return (cstr) { .data = &interact_temp, sizeof(interact_temp) };
 }
 
 inline cstr click_(UIinteraction action, UIID ID) {
 	click_temp = (ClickAction){action, ID};
-	return (cstr) { .data = &click_temp, 3 };
+	return (cstr) { .data = &click_temp, sizeof(click_temp) };
 }
 
 inline cstr paginate_(directionOrtho dir) {
 	paginate_temp = dir;
-	return (cstr) { .data = &paginate_temp, 1 };
+	return (cstr) { .data = &paginate_temp, sizeof(paginate_temp) };
 }
 
 inline cstr scroll_(directionOrtho dir, UIID ID) {

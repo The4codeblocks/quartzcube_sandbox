@@ -4,13 +4,12 @@
 #include "renderHandler.h"
 #include "rlgl.h"
 
-RenderTexture2D UIRSpace0;
-RenderTexture2D UIRSpace1;
-Image UIESpace0;
-Image UIESpace1;
-Image depthbuf;
-Material M0;
-Material M1;
+RenderTexture2D UIRSpace0, UIRSpace1; // stores pointers to UIobjects as --rgbRGB
+RenderTexture2D UIRSpace2; // stores fine UI interaction info as R: UV x, G: UV y, B: depth
+Image UIESpace0, UIESpace1;
+Image UIESpace2;
+Material M0, M1;
+Material M2;
 
 void setControlled(Object* obj) {
 	controlled = obj;
@@ -27,15 +26,23 @@ void pushUIobj(Mesh mesh, Matrix transform, UIobject* obj) {
 	M0.maps->color = ID0;
 	M1.maps->color = ID1;
 	Camera3D focus = mainCam;
-	focus.fovy = 0.0000000000001;
+	focus.fovy = 0.001;
+
 	BeginTextureMode(UIRSpace0);
-	BeginMode3D(mainCam);
+	BeginMode3D(focus);
 	DrawMesh(mesh, M0, transform);
 	EndMode3D();
 	EndTextureMode();
+
 	BeginTextureMode(UIRSpace1);
-	BeginMode3D(mainCam);
+	BeginMode3D(focus);
 	DrawMesh(mesh, M1, transform);
+	EndMode3D();
+	EndTextureMode();
+
+	BeginTextureMode(UIRSpace2);
+	BeginMode3D(focus);
+	DrawMesh(mesh, M2, transform);
 	EndMode3D();
 	EndTextureMode();
 }
@@ -46,29 +53,48 @@ void UIInit() {
 	offset = winXCenter + winWidth * winYCenter;
 	UIRSpace0 = LoadRenderTexture(1, 1);
 	UIRSpace1 = LoadRenderTexture(1, 1);
+	UIRSpace2 = LoadRenderTexture(256, 256);
 	M0 = LoadMaterialDefault();
 	M1 = LoadMaterialDefault();
+	M2 = LoadMaterialDefault();
+	M2.shader = LoadShader("uishader.vs", "uishader.fs");
 }
 
 void UIMain() {
 	UnloadImage(UIESpace0);
-	UnloadImage(UIESpace1);
 	BeginTextureMode(UIRSpace0);
 	ClearBackground(BLACK);
 	EndTextureMode();
+
+	UnloadImage(UIESpace1);
 	BeginTextureMode(UIRSpace1);
 	ClearBackground(BLACK);
 	EndTextureMode();
+
+	UnloadImage(UIESpace2);
+	BeginTextureMode(UIRSpace2);
+	ClearBackground(BLACK);
+	EndTextureMode();
+
 	UIFrom(rootObjectNode);
+
 	UIESpace0 = LoadImageFromTexture(UIRSpace0.texture);
 	UIESpace1 = LoadImageFromTexture(UIRSpace1.texture);
+	UIESpace2 = LoadImageFromTexture(UIRSpace2.texture);
+}
 
+void UIFin() {
+	UnloadMaterial(M0);
+	UnloadMaterial(M1);
+	UnloadMaterial(M2);
+	UnloadRenderTexture(UIRSpace0);
+	UnloadRenderTexture(UIRSpace1);
+	UnloadRenderTexture(UIRSpace2);
 }
 
 UIobject* getPointed() {
 	Color ID0 = GetPixelColor((int*)UIESpace0.data, UIESpace0.format);
 	Color ID1 = GetPixelColor((int*)UIESpace1.data, UIESpace1.format);
-	float depth = GetPixelColor((int*)depthbuf.data, depthbuf.format).r;
 	return (UIobject*)((size_t)ID0.r | (size_t)ID0.g << 8 | (size_t)ID0.b << 16 | (size_t)ID1.r << 24 | (size_t)ID1.g << 32 | (size_t)ID1.b << 40);
 }
 

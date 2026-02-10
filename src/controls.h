@@ -7,8 +7,8 @@
 #include "suppmath.h"
 
 typedef struct {
-	double current;
-	double increment;
+	double value;
+	double digit;
 } NumberInput;
 
 Vector3 getMovement();

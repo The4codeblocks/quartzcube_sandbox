@@ -404,7 +404,7 @@ void wireable_draw(Component* comp) {
 }
 
 
-void avatar_tick(Component* comp) {
+void avatar_tick(Component* comp, float dt) {
 	Object* object = comp->obj;
 	Object* tool = comp->data;
 	if (tool) {
@@ -469,7 +469,7 @@ void painter_recieve(Component* comp, dataChannel channel, cstr data) {
 		break;
 	case paginate:
 		if (data.length >= 1) {
-			directionOrtho dir = ((directionOrtho) * (char*)data.data);
+			directionOrtho dir = ((directionOrtho) *(char*)data.data);
 			int idx = cdata->selected & 3;
 			switch (dir) {
 			case dirU:
@@ -503,21 +503,39 @@ void spawnTool_recieve(Component* comp, dataChannel channel, cstr data) {
 	SpawnToolData* cdata = comp->data;
 	switch (channel) {
 	case interact:
-		if (data.length >= 2 && (*(UIinteraction*)data.data) & ui_DLMB) spawnElement(pos3round(vec3addPv(object->pos, Vector3Scale(object->orientation.forth, 2.0)), (pos3) { 0 }, (vec3) { 0.25, 0.25, 0.25 }), (Vector3) { 0.25, 0.25, 0.25 }, object->orientation, *(int*)comp->data);
+		double snap = cdata->gridsnap.value;
+		if (data.length >= 2 && (*(UIinteraction*)data.data) & ui_DLMB) spawnElement(pos3round(vec3addPv(object->pos, Vector3Scale(object->orientation.forth, 2.0)), (pos3) { 0 }, (vec3) { snap, snap, snap }), (Vector3) { 0.25, 0.25, 0.25 }, object->orientation, *(int*)comp->data);
 		break;
 	case paginate: // INTEND TO ADD GRID AND STUFF
 		if (data.length >= 1) {
 			directionOrtho dir = ((directionOrtho) * (char*)data.data);
+			int configIdx = cdata->configIdx;
 			switch (dir) {
 			case dirF:
-			case dirL:
 			case dirU:
-				cdata->index = wrapInt(cdata->index - 1, 0, elementCount);
-				break;
+				if (configIdx == 0) {
+					cdata->index = wrapInt(cdata->index - 1, 0, elementCount);
+					break;
+				}
 			case dirB:
-			case dirR:
 			case dirD:
-				cdata->index = wrapInt(cdata->index + 1, 0, elementCount);
+				switch (configIdx) {
+				case 0:
+					cdata->index = wrapInt(cdata->index + 1, 0, elementCount);
+					break;
+				case 1:
+					parseNumberInputControl(&(cdata->gridsnap), dir);
+					cdata->gridsnap.value = max(cdata->gridsnap.value, 0);
+					break;
+				}
+				break;
+			case dirL:
+				cdata->configIdx = wrapInt(configIdx - 1, 0, 2);
+				cdata->gridsnap.digit = 0;
+				break;
+			case dirR:
+				cdata->configIdx = wrapInt(configIdx + 1, 0, 2);
+				cdata->gridsnap.digit = 0;
 				break;
 			}
 		}
@@ -531,18 +549,32 @@ void spawnTool_init(Component* comp) {
 	data->mat = createTransmitMaterial();
 	data->textbox = LoadRenderTexture(128, 32);
 	data->mat.maps[MATERIAL_MAP_DIFFUSE].texture = data->textbox.texture;
+	data->gridsnap.value = 0.25;
+	data->gridsnap.digit = 0.0;
+	data->configIdx = 0;
 	comp->data = data;
 }
 
 void spawnTool_draw(Component* comp) {
 	Object* object = comp->obj;
 	SpawnToolData* data = comp->data;
-	char* name = elements[data->index].name;
+	char* text;
+	switch (data->configIdx) {
+	case 0:
+		text = elements[data->index].name;
+		break;
+	case 1:
+		text = TextFormat("grid: %.4f", data->gridsnap.value);
+		break;
+	default:
+		text = "";
+	}
+
 	EndMode3D();
 	EndTextureMode();
 	BeginTextureMode(data->textbox);
 	ClearBackground(BLACK);
-	DrawTextPro(GetFontDefault(), name, (Vector2) { 0.0, 0.0 }, (Vector2) { 0.0, 0.0 }, 0.0, 16.0, 2.0, WHITE);
+	DrawTextPro(GetFontDefault(), text, (Vector2) { 0.0, 0.0 }, (Vector2) { 0.0, 0.0 }, 0.0, 16.0, 2.0, WHITE);
 	EndTextureMode();
 	BeginTextureMode(rndt);
 	BeginMode3D(mainCam);
@@ -560,7 +592,8 @@ void spawnTool_draw(Component* comp) {
 		true,
 	});
 
-	ghostElement(pos3round(vec3addPv(object->pos, Vector3Scale(object->orientation.forth, 2.0)), (pos3) { 0 }, (vec3) { 0.25, 0.25, 0.25 }), (Vector3) { 0.25, 0.25, 0.25 }, object->orientation, * (int*)comp->data);
+	double snap = data->gridsnap.value;
+	ghostElement(pos3round(vec3addPv(object->pos, Vector3Scale(object->orientation.forth, 2.0)), (pos3) { 0 }, (vec3) { snap, snap, snap }), (Vector3) { 0.25, 0.25, 0.25 }, object->orientation, * (int*)comp->data);
 }
 
 void painter_draw(Component* comp) {

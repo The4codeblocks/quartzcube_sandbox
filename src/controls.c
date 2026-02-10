@@ -35,18 +35,18 @@ directionOrtho getScrollDir() {
 void parseNumberInputControl(NumberInput* in, directionOrtho scroll) {
 	switch (scroll) {
 	case dirU:
-		in->current += pow(10, in->increment);
+		in->value += pow(10, in->digit);
 		break;
 	case dirD:
-		in->current -= pow(10, in->increment);
+		in->value -= pow(10, in->digit);
 		break;
-	case dirR:
-		++in->increment;
+	case dirF:
+		++in->digit;
 		break;
-	case dirL:
-		--in->increment;
+	case dirB:
+		--in->digit;
 		break;
 	}
-}; // WIP
+};
 
 
