@@ -49,4 +49,22 @@ void parseNumberInputControl(NumberInput* in, directionOrtho scroll) {
 	}
 };
 
+void parseRotateInputControl(NumberInput* in, directionOrtho scroll) {
+	switch (scroll) {
+	case dirU:
+		in->value -= 15;
+		break;
+	case dirD:
+		in->value += 15;
+		break;
+	case dirF:
+		in->value -= 1;
+		break;
+	case dirB:
+		in->value += 1;
+		break;
+	}
+	in->value = Wrap(in->value, 0.0, 360.0);
+};
+
 

@@ -6,6 +6,8 @@
 #include <string.h>
 #include "raymath.h"
 
+#define CYAN (Color) {0, 255, 255, 255}
+
 typedef struct { // vector orientation
 	Vector3 forth, up;
 } orientation;
@@ -147,7 +149,7 @@ inline orientation rotateOrientationAxisAngle(orientation ori, Vector3 axis, flo
 		Vector3RotateByAxisAngle(ori.forth, axis, angle),
 		Vector3RotateByAxisAngle(ori.up,    axis, angle),
 	};
-}
+} // angle in radians
 
 inline Vector3 getRight(orientation ori) {
 	return Vector3CrossProduct(ori.up, ori.forth);
@@ -167,6 +169,10 @@ inline orientation projectOrientation(orientation from, Vector3 on) {
 		projectedForth,
 		on,
 	};
+}
+
+inline bool orientationEqual(orientation a, orientation b) {
+	return Vector3Equals(a.forth, b.forth) & Vector3Equals(a.up, b.up);
 }
 
 inline vec3 vec3round(vec3 vec, vec3 prec) {
@@ -212,5 +218,130 @@ typedef enum {
 	dirR, dirL,
 	dirF, dirB,
 } directionOrtho;
+
+// hashmap stuff
+
+typedef struct {
+	void* ptr;
+	int	i;
+} PointerIntPair;
+
+struct PairLLNode;
+typedef struct PairLLNode PairLLNode;
+struct PairLLNode {
+	PointerIntPair pair;
+	PairLLNode* next;
+};
+
+typedef PairLLNode* Hashmap_pi[2048]; // 2048 buckets // 2^11
+
+inline int hashPrimitive(size_t i) {
+	size_t n = (size_t)i * 0x1111111111;
+	n >>= 24;
+	return n & 0x7ff;
+}
+
+inline int readMap_pi(Hashmap_pi map, void* ptr) {
+	int hash = hashPrimitive(ptr);
+	PairLLNode* node = map[hash];
+	while (node) {
+		PointerIntPair pair = node->pair;
+		if (pair.ptr == ptr) return pair.i;
+		node = node->next;
+	}
+	return 0;
+}
+
+inline int delMap_pi(Hashmap_pi map, void* ptr) {
+	int hash = hashPrimitive(ptr);
+	PairLLNode* node = map[hash];
+	PairLLNode* prev = NULL;
+	while (node) {
+		PointerIntPair pair = node->pair;
+		if (pair.ptr == ptr) {
+			if (prev) prev->next = node->next;
+			else map[hash] = node->next;
+			free(node);
+			return pair.i;
+		}
+		prev = node;
+		node = node->next;
+	}
+	return;
+}
+
+inline void writeMap_pi(Hashmap_pi map, void* ptr, int i) {
+	int hash = hashPrimitive(ptr);
+	PairLLNode* node = map[hash];
+	while (node) {
+		PointerIntPair pair = node->pair;
+		if (pair.ptr == ptr) {
+			node->pair.i = i;
+			return;
+		}
+		node = node->next;
+	}
+	PairLLNode* newnode = calloc(1, sizeof(PairLLNode));
+	newnode->next = map[hash];
+	newnode->pair = (PointerIntPair){ ptr, i };
+	map[hash] = newnode;
+	return;
+}
+
+
+typedef Hashmap_pi Hashmap_ip; // same pairs, different indexing
+
+inline int hashInt(int i) {
+	size_t n = (size_t)i * 0x11111111;
+	n >>= 24;
+	return n & 0x7ff;
+}
+
+inline void* readMap_ip(Hashmap_ip map, int i) {
+	int hash = hashPrimitive(i);
+	PairLLNode* node = map[hash];
+	while (node) {
+		PointerIntPair pair = node->pair;
+		if (pair.i == i) return pair.ptr;
+		node = node->next;
+	}
+	return NULL;
+}
+
+inline void* delMap_ip(Hashmap_ip map, int i) {
+	int hash = hashPrimitive(i);
+	PairLLNode* node = map[hash];
+	PairLLNode* prev = NULL;
+	while (node) {
+		PointerIntPair pair = node->pair;
+		if (pair.i == i) {
+			if (prev) prev->next = node->next;
+			else map[hash] = node->next;
+			free(node);
+			return pair.ptr;
+		}
+		prev = node;
+		node = node->next;
+	}
+	return;
+}
+
+inline void writeMap_ip(Hashmap_ip map, int i, void* ptr) {
+	int hash = hashPrimitive(i);
+	PairLLNode* node = map[hash];
+	while (node) {
+		PointerIntPair pair = node->pair;
+		if (pair.i == i) {
+			node->pair.ptr = ptr;
+			return;
+		}
+		node = node->next;
+	} 
+	PairLLNode* newnode = calloc(1, sizeof(PairLLNode));
+	newnode->next = map[hash];
+	newnode->pair = (PointerIntPair){ ptr, i };
+	map[hash] = newnode;
+	return;
+}
 
 #endif

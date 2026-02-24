@@ -24,7 +24,7 @@
 #define ui_on   16384
 #define ui_off  32768
 
-Object* controlled;
+ObjectRef controlled;
 
 void setControlled(Object* obj);
 

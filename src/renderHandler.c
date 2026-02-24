@@ -276,7 +276,7 @@ void drawMain() {
 
 	//pushElement((RenderElement) { *(unitcube.meshes), mat, m });
 
-	drawFrom(rootObjectNode);
+	drawFrom(mainEnv.root);
 
 	drawAll();
 	clearAll();

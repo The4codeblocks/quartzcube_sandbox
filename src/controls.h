@@ -16,5 +16,6 @@ Vector3 getMovement();
 directionOrtho getScrollDir();
 
 void parseNumberInputControl(NumberInput*, directionOrtho);
+void parseRotateInputControl(NumberInput*, directionOrtho);
 
 #endif

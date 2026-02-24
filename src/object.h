@@ -34,8 +34,18 @@ struct Component {
 	void* data; // arbitrary data structure
 };
 
+struct ObjectNode {
+	Object object;
+	ObjectNode* next;
+	ObjectNode* prev;
+};
+
 typedef struct {
-	Object* obj;
+	int id;
+} ObjectRef;
+
+typedef struct {
+	ObjectRef obj;
 	UIID type;
 } UIobject;
 
@@ -55,17 +65,20 @@ struct ComponentDef {
 	void* data; // arbitrary data structure
 };
 
-struct ObjectNode {
-	Object object;
-	ObjectNode* next;
-	ObjectNode* prev;
-};
+typedef struct {
+	ObjectNode* root;
+} Environment;
 
-ObjectNode* rootObjectNode; // object list root node pointer, can be null
+Environment mainEnv;
+
+Hashmap_pi refmap;     // pointer -> integer
+
+Hashmap_ip refbackmap; // integer -> pointer
 
 Object* createObject(pos3, cstr); // allocates memory to create an object
 
-void eliminateObject(Object*);
+void eliminateObject(ObjectRef);
+void eliminateObjectRaw(Object*);
 
 Component* addComponent(Object*, ComponentDef*); // adds component to object
 
@@ -82,8 +95,16 @@ inline void sendSignalComp(Component* comp, dataChannel channel, cstr data) {
 	if (def->recieve) def->recieve(comp, channel, data);
 };
 
-inline void sendSignal(Object* object, dataChannel channel, cstr data) {
-	Component* comp = object->components;
+Object* fromRef(ObjectRef);
+
+ObjectRef toRef(Object*);
+
+bool exists(Objectref);
+
+inline void sendSignal(ObjectRef object, dataChannel channel, cstr data) {
+	Object* obj = fromRef(object);
+	if (!obj) return;
+	Component* comp = obj->components;
 	while (comp) {
 		sendSignalComp(comp, channel, data);
 		comp = comp->next;

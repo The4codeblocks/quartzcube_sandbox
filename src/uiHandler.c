@@ -12,7 +12,7 @@ Material M0, M1;
 Material M2;
 
 void setControlled(Object* obj) {
-	controlled = obj;
+	controlled = toRef(obj);
 	if (obj) {
 		camOri = projectOrientation(camOri, obj->orientation.up);
 		camPos = obj->pos;
@@ -76,7 +76,7 @@ void UIMain() {
 	ClearBackground(BLACK);
 	EndTextureMode();
 
-	UIFrom(rootObjectNode);
+	UIFrom(mainEnv.root);
 
 	UIESpace0 = LoadImageFromTexture(UIRSpace0.texture);
 	UIESpace1 = LoadImageFromTexture(UIRSpace1.texture);
@@ -101,13 +101,5 @@ UIobject* getPointed() {
 void send(UIinteraction event) {
 	UIobject* ID = getPointed();
 	printf("%p\n", ID);
-	if (ID) {
-		UIobject obj = *(UIobject*)ID;
-		Component* comp = obj.obj->components;
-		while (comp) {
-			ComponentDef* def = comp->def;
-			if (def->recieve) def->recieve(comp, click, click_(event, ID->type));
-			comp = comp->next;
-		}
-	}
+	if (ID) sendSignal(ID->obj, click, click_(event, ID->type));
 }

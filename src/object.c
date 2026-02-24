@@ -3,19 +3,25 @@
 
 #include "object.h"
 
+int curid = 0;
+
 Object* createObject(pos3 pos, cstr serial) { // TODO: serialization
 	ObjectNode* objectNode = calloc(1, sizeof(ObjectNode));
 	objectNode->object.pos = pos;
 	Object* object = &(objectNode->object);
 	object->node = objectNode;
 	object->orientation = (orientation){ 0,0,1, 0,1,0 };
-	objectNode->next = rootObjectNode;
-	if (rootObjectNode) rootObjectNode->prev = objectNode;
-	rootObjectNode = objectNode;
+	objectNode->next = mainEnv.root;
+	if (mainEnv.root) mainEnv.root->prev = objectNode;
+	mainEnv.root = objectNode;
+	writeMap_ip(refbackmap, ++curid, object);
+	writeMap_pi(refmap, object, curid);
 	return object;
 }
 
-void eliminateObject(Object* obj) {
+void eliminateObject(ObjectRef ref) {
+	Object* obj = delMap_ip(refbackmap, ref.id);
+	if (!obj) return;
 	ObjectNode* node = obj->node;
 	Component* comp = obj->components;
 	while (comp) {
@@ -23,14 +29,36 @@ void eliminateObject(Object* obj) {
 		eliminateComponent(comp);
 		comp = next;
 	}
+	delMap_pi(refmap, obj);
 	if (node) {
 		ObjectNode* prev = node->prev;
 		ObjectNode* next = node->next;
 		if (prev) prev->next = next;
-		else rootObjectNode = next;
+		else mainEnv.root = next;
 		if (next) next->prev = prev;
-		obj->node->next = (ObjectNode*)1;
+		free(node);
 	} else free(obj);
+}
+
+void eliminateObjectRaw(Object* obj) {
+	if (!obj) return;
+	ObjectNode* node = obj->node;
+	Component* comp = obj->components;
+	while (comp) {
+		Component* next = comp->next;
+		eliminateComponent(comp);
+		comp = next;
+	}
+	delMap_ip(refbackmap, delMap_pi(refmap, obj));
+	if (node) {
+		ObjectNode* prev = node->prev;
+		ObjectNode* next = node->next;
+		if (prev) prev->next = next;
+		else mainEnv.root = next;
+		if (next) next->prev = prev;
+		free(node);
+	}
+	else free(obj);
 }
 
 Component* addComponent(Object* object, ComponentDef* def) {
@@ -93,4 +121,18 @@ void UIFrom(ObjectNode* startingNode) {
 		}
 		node = node->next;
 	}
+}
+
+Object* fromRef(ObjectRef ref) {
+	if (ref.id == 0) return NULL;
+	return readMap_ip(refbackmap, ref.id);
+}
+
+ObjectRef toRef(Object* obj) {
+	return (ObjectRef) { readMap_pi(refmap, obj) };
+}
+
+bool exists(ObjectRef ref) {
+	if (ref.id == 0) return false;
+	return readMap_ip(refbackmap, ref.id) && true;
 }

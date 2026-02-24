@@ -9,7 +9,7 @@
 
 typedef struct { // data for a rendered primitive
 	Color col;
-	Color absorption;
+	Color transmission;
 	Vector3 scale;
 } PartData;
 
@@ -35,16 +35,8 @@ typedef struct {
 } VelocityData;
 
 typedef struct {
-	int index;
-	int configIdx;
-	NumberInput gridsnap;
-	Material mat;
-	RenderTexture2D textbox;
-} SpawnToolData;
-
-typedef struct {
-	Object* from;
-	Object* to;
+	ObjectRef from;
+	ObjectRef to;
 } ObjectPair;
 
 typedef struct {
@@ -73,22 +65,23 @@ typedef enum {
 
 	particleCannon, // data: NULL
 	physics,        // data: <this is not done>
-	wireable,       // data: LinkedList<Object*>
+	wireable,       // data: LinkedList<ObjectRef>
 	sendOnClick,    // data: NULL
 
 	blinker,        // data: Color
-	avatar,         // data: Object (avoiding redundant indirection)
+	avatar,         // data: ObjectRef
 	equippable,     // data: NULL
 	spawnTool,      // data: NULL
 
 	wiring,         // data: ObjectPair
 	sendOnSignal,   // data: NULL
-	painter,
+	painter,        // data: PainterData
+	remover,        // data: NULL
 
 } Components;
 
 
-ComponentDef definitions[19];
+ComponentDef definitions[20];
 
 void initDefs();
 void updateMaterial(MeshData);

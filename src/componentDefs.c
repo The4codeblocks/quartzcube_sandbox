@@ -13,6 +13,9 @@
 #include "spawntool.h"
 
 #define matrixScale(x, y, z) (Matrix){ x, 0.0f, 0.0f, 0.0f, 0.0f, y, 0.0f, 0.0f, 0.0f, 0.0f, z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f }
+
+#define simpleMallocInit(type) (Component* comp) {comp->data = malloc(sizeof(type));}
+#define simpleCallocInit(type) (Component* comp) {comp->data = calloc(1, sizeof(type));}
 /*
 typedef struct {
 	MeshData md;
@@ -97,14 +100,14 @@ void initEmerald(Object* object) {
 
 typedef struct ObjectRefNode ObjectRefNode;
 struct ObjectRefNode {
-	Object* obj;
+	ObjectRef obj;
 	ObjectRefNode* next;
 };
 
 
 void updateMaterial(MeshData data) {
 	data.mat.maps[MATERIAL_MAP_DIFFUSE].color = data.part.col;
-	data.mat.maps[MATERIAL_MAP_TRANSMIT].color = data.part.absorption;
+	data.mat.maps[MATERIAL_MAP_TRANSMIT].color = data.part.transmission;
 };
 
 
@@ -119,7 +122,7 @@ void cannonInput(Component* comp, dataChannel channel, cstr data) {
 			MeshData* md = (MeshData*)addComponent(obj, &definitions[drawMesh])->data;
 			md->mesh = brickMesh;
 			md->part.col = GREEN;
-			md->part.absorption = WHITE;
+			md->part.transmission = WHITE;
 			md->part.scale = (Vector3){ 0.125, 0.125, 0.125 };
 			obj->orientation = object->orientation;
 			updateMaterial(*md);
@@ -145,6 +148,7 @@ Component* findFirstComponent(Object* obj, ComponentDef* def) { // O(n), finds 1
 		if (ndef == def) return comp;
 		comp = comp->next;
 	}
+	return NULL;
 }
 
 void wireConnect(Object* from, Object* to) {
@@ -153,7 +157,7 @@ void wireConnect(Object* from, Object* to) {
 	ObjectRefNode* node = malloc(sizeof(ObjectRefNode));
 	node->next = comp->data;
 	comp->data = node;
-	node->obj = to;
+	node->obj = toRef(to);
 }
 
 void wireSendAll(Object* from, cstr data) {
@@ -209,8 +213,8 @@ void equippable_UIaction(Component* comp, dataChannel channel, cstr data) {
 		ClickAction act = *(ClickAction*)data.data;
 		if (act.id == solid)
 		if (act.action & ui_DLMB) {
-			Component* avatarComp = findFirstComponent(controlled, &definitions[avatar]);
-			if (controlled && avatarComp) avatarComp->data = comp->obj;
+			Component* avatarComp = findFirstComponent(fromRef(controlled), &definitions[avatar]);
+			if (exists(controlled) && avatarComp) *(ObjectRef*)(avatarComp->data) = toRef(comp->obj);
 		}
 	}
 }
@@ -236,21 +240,11 @@ void blinker_recieve(Component* comp, dataChannel channel, cstr data) {
 	}
 }
 
-void initObjectPair(Component* comp) {
-	comp->data = calloc(1, sizeof(ObjectPair));
-}
-
-void initInt(Component* comp) {
-	comp->data = malloc(sizeof(int));
-}
-
-void initFloat(Component* comp) {
-	comp->data = malloc(sizeof(float));
-}
-
-void initColor(Component* comp) {
-	comp->data = malloc(sizeof(Color));
-}
+void initObjectPair simpleCallocInit(ObjectPair);
+void initRef   simpleCallocInit(ObjectRef);
+void initInt   simpleMallocInit(int);
+void initFloat simpleMallocInit(float);
+void initColor simpleMallocInit(Color);
 
 void painter_init(Component* comp) {
 	PainterData* data = malloc(sizeof(PainterData));
@@ -273,13 +267,11 @@ void painter_init(Component* comp) {
 void lifetime_tick(Component* comp, float dt) {
 	float* data = comp->data;
 	*data -= dt;
-	if ((*data) < 0) eliminateObject(comp->obj);
+	if ((*data) < 0) eliminateObjectRaw(comp->obj);
 }
 
 
-void velocity_init(Component* comp) {
-	comp->data = calloc(1, sizeof(VelocityData));
-}
+void velocity_init simpleCallocInit(VelocityData);
 
 void velocity_tick(Component* comp, float dt) {
 	Object* object = comp->obj;
@@ -289,16 +281,13 @@ void velocity_tick(Component* comp, float dt) {
 }
 
 
-void initScalable(Component* comp) {
-	comp->data = malloc(sizeof(Scalable));
-}
-
+void initScalable simpleMallocInit(Scalable);
 
 void UImesh_init(Component* comp) {
 	UIscalable* data = malloc(sizeof(UIscalable));
 	data->UIobj = (UIobject){
 		.type = solid,
-		.obj = comp->obj,
+		.obj = toRef(comp->obj),
 	};
 	comp->data = data;
 }
@@ -315,7 +304,7 @@ void UImesh_pushUI(Component* comp) {
 
 	Vector3 scale = data->scl.scale;
 
-	if (controlled != object) pushUIobj(data->scl.mesh, MatrixMultiply(MatrixScale(scale.x, scale.y, scale.z), move), &data->UIobj);
+	if (fromRef(controlled) != object) pushUIobj(data->scl.mesh, MatrixMultiply(MatrixScale(scale.x, scale.y, scale.z), move), &data->UIobj);
 }
 
 void freeData(Component* comp) {
@@ -331,7 +320,7 @@ void drawEmerald_init(Component* comp) {
 	part->scale = (Vector3){ 1.0, 0.25, 0.5 };
 	//part->col = (Color){ rand() & 255, rand() & 255, rand() & 255, 255 };
 	part->col = BLUE;
-	part->absorption = (Color){ rand() & 255, rand() & 255, rand() & 255, 255 };
+	part->transmission = (Color){ rand() & 255, rand() & 255, rand() & 255, 255 };
 	updateMaterial(*data);
 	srand(rand());
 	comp->data = data;
@@ -374,13 +363,13 @@ void drawMeshOpaque_draw(Component* comp) {
 
 	MeshData data = (*(MeshData*)(comp->data));
 
-	data.mat.maps[MATERIAL_MAP_TRANSMIT].color = object == controlled ? GRAY : WHITE;
+	data.mat.maps[MATERIAL_MAP_TRANSMIT].color = object == fromRef(controlled) ? GRAY : WHITE;
 
 	pushElement((RenderElement) {
 		data.mesh,
 		data.mat,
 		MatrixMultiply(MatrixScale(data.part.scale.x, data.part.scale.y, data.part.scale.z), move),
-		.isTransparent = object == controlled
+		.isTransparent = object == fromRef(controlled)
 	});
 }
 
@@ -395,7 +384,7 @@ void wireable_draw(Component* comp) {
 	ObjectRefNode* node = comp->data;
 	while (node) {
 		Vector3 posF = vec3tov(vec3subPP(comp->obj->pos, camPos));
-		Vector3 posT = vec3tov(vec3subPP(node->obj->pos, camPos));
+		Vector3 posT = vec3tov(vec3subPP(fromRef(node->obj)->pos, camPos));
 		Vector3 posM = Vector3Scale(Vector3Add(posF, posT), 0.5);
 		DrawLine3D(posF, posM, ORANGE);
 		DrawLine3D(posM, posT, YELLOW);
@@ -406,7 +395,8 @@ void wireable_draw(Component* comp) {
 
 void avatar_tick(Component* comp, float dt) {
 	Object* object = comp->obj;
-	Object* tool = comp->data;
+	ObjectRef* data = comp->data;
+	Object* tool = fromRef(*data);
 	if (tool) {
 		tool->pos = vec3addPv(object->pos, getRight(object->orientation));
 		tool->orientation = object->orientation;
@@ -415,10 +405,11 @@ void avatar_tick(Component* comp, float dt) {
 
 void avatar_recieve(Component* comp, dataChannel channel, cstr data) {
 	Object* object = comp->obj;
+	ObjectRef ref = *(ObjectRef*)comp->data;
 	switch(channel) {
 	case interact:
 	case paginate:
-		if (comp->data) sendSignal(comp->data, channel, data);
+		if (exists(ref)) sendSignal(ref, channel, data);
 		break;
 	case moveTo:
 		if (data.length < 24) break;
@@ -440,10 +431,26 @@ void wiring_recieve(Component* comp, dataChannel channel, cstr data) {
 		if ((data.length >= 2) && (action & (ui_DLMB | ui_DRMB))) {
 			ObjectPair* pair = comp->data;
 			UIobject* pointed = getPointed();
-			if (action & ui_DLMB) pair->to = pointed ? pointed->obj : NULL;
-			if (action & ui_DRMB) pair->from = pointed ? pointed->obj : NULL;
-			if (pair->to && pair->from && (pair->to != pair->from))
-				wireConnect(pair->from, pair->to);
+			if (action & ui_DLMB) pair->to = pointed ? pointed->obj : (ObjectRef){0};
+			if (action & ui_DRMB) pair->from = pointed ? pointed->obj : (ObjectRef){0};
+			if (exists(pair->to) && exists(pair->from) && (fromRef(pair->to) != fromRef(pair->from)))
+				wireConnect(fromRef(pair->from), fromRef(pair->to));
+		}
+		break;
+	}
+}
+
+
+void remover_recieve(Component* comp, dataChannel channel, cstr data) {
+	Object* object = comp->obj;
+	switch (channel) {
+	case interact:
+		UIinteraction action = *(UIinteraction*)data.data;
+		if ((data.length >= 2) && (action & ui_DLMB)) {
+			ObjectPair* pair = comp->data;
+			UIobject* pointed = getPointed();
+			if (!pointed) break;
+			eliminateObject(pointed->obj);
 		}
 		break;
 	}
@@ -459,9 +466,9 @@ void painter_recieve(Component* comp, dataChannel channel, cstr data) {
 			UIobject* pointed = getPointed();
 			if (pointed) {
 				UIinteraction action = *(UIinteraction*)data.data;
-				if (action & ui_DLMB) paint(findFirstComponent(pointed->obj, &definitions[drawMesh]), cdata->col);
+				if (action & ui_DLMB) paint(findFirstComponent(fromRef(pointed->obj), &definitions[drawMesh]), cdata->col);
 				if (action & ui_DRMB) {
-					Component* meshComp = findFirstComponent(pointed->obj, &definitions[drawMesh]);
+					Component* meshComp = findFirstComponent(fromRef(pointed->obj), &definitions[drawMesh]);
 					if (meshComp) cdata->col = ((MeshData*)(meshComp->data))->part.col;
 				}
 			}
@@ -495,105 +502,6 @@ void painter_recieve(Component* comp, dataChannel channel, cstr data) {
 		}
 		break;
 	}
-}
-
-
-void spawnTool_recieve(Component* comp, dataChannel channel, cstr data) {
-	Object* object = comp->obj;
-	SpawnToolData* cdata = comp->data;
-	switch (channel) {
-	case interact:
-		double snap = cdata->gridsnap.value;
-		if (data.length >= 2 && (*(UIinteraction*)data.data) & ui_DLMB) spawnElement(pos3round(vec3addPv(object->pos, Vector3Scale(object->orientation.forth, 2.0)), (pos3) { 0 }, (vec3) { snap, snap, snap }), (Vector3) { 0.25, 0.25, 0.25 }, object->orientation, *(int*)comp->data);
-		break;
-	case paginate: // INTEND TO ADD GRID AND STUFF
-		if (data.length >= 1) {
-			directionOrtho dir = ((directionOrtho) * (char*)data.data);
-			int configIdx = cdata->configIdx;
-			switch (dir) {
-			case dirF:
-			case dirU:
-				if (configIdx == 0) {
-					cdata->index = wrapInt(cdata->index - 1, 0, elementCount);
-					break;
-				}
-			case dirB:
-			case dirD:
-				switch (configIdx) {
-				case 0:
-					cdata->index = wrapInt(cdata->index + 1, 0, elementCount);
-					break;
-				case 1:
-					parseNumberInputControl(&(cdata->gridsnap), dir);
-					cdata->gridsnap.value = max(cdata->gridsnap.value, 0);
-					break;
-				}
-				break;
-			case dirL:
-				cdata->configIdx = wrapInt(configIdx - 1, 0, 2);
-				cdata->gridsnap.digit = 0;
-				break;
-			case dirR:
-				cdata->configIdx = wrapInt(configIdx + 1, 0, 2);
-				cdata->gridsnap.digit = 0;
-				break;
-			}
-		}
-		break;
-	}
-}
-
-void spawnTool_init(Component* comp) {
-	SpawnToolData* data = malloc(sizeof(SpawnToolData));
-	data->index = 0;
-	data->mat = createTransmitMaterial();
-	data->textbox = LoadRenderTexture(128, 32);
-	data->mat.maps[MATERIAL_MAP_DIFFUSE].texture = data->textbox.texture;
-	data->gridsnap.value = 0.25;
-	data->gridsnap.digit = 0.0;
-	data->configIdx = 0;
-	comp->data = data;
-}
-
-void spawnTool_draw(Component* comp) {
-	Object* object = comp->obj;
-	SpawnToolData* data = comp->data;
-	char* text;
-	switch (data->configIdx) {
-	case 0:
-		text = elements[data->index].name;
-		break;
-	case 1:
-		text = TextFormat("grid: %.4f", data->gridsnap.value);
-		break;
-	default:
-		text = "";
-	}
-
-	EndMode3D();
-	EndTextureMode();
-	BeginTextureMode(data->textbox);
-	ClearBackground(BLACK);
-	DrawTextPro(GetFontDefault(), text, (Vector2) { 0.0, 0.0 }, (Vector2) { 0.0, 0.0 }, 0.0, 16.0, 2.0, WHITE);
-	EndTextureMode();
-	BeginTextureMode(rndt);
-	BeginMode3D(mainCam);
-
-	Vector3 pos = vec3tov(vec3subPP(object->pos, camPos));
-
-	Matrix translation = MatrixTranslate(pos.x, pos.y, pos.z);
-	Matrix rotation = QuaternionToMatrix(QuaternionFromOrientationToOrientation((orientation) { 0, 0, 1, 0, 1, 0 }, object->orientation));
-	Matrix move = MatrixMultiply(MatrixMultiply(MatrixScale(1.0, 0.25, 0.25), MatrixRotateX(-PI/2.0)), MatrixMultiply(MatrixMultiply(MatrixTranslate(0.75, 0, 0), rotation), translation));
-
-	pushElement((RenderElement) {
-		planeMesh,
-		data->mat,
-		move,
-		true,
-	});
-
-	double snap = data->gridsnap.value;
-	ghostElement(pos3round(vec3addPv(object->pos, Vector3Scale(object->orientation.forth, 2.0)), (pos3) { 0 }, (vec3) { snap, snap, snap }), (Vector3) { 0.25, 0.25, 0.25 }, object->orientation, * (int*)comp->data);
 }
 
 void painter_draw(Component* comp) {
@@ -720,8 +628,10 @@ void initDefs() {
 	};
 
 	definitions[avatar] = (ComponentDef){
+		.init = initRef,
 		.tick = avatar_tick,
 		.recieve = avatar_recieve,
+		.elim = freeData,
 	};
 
 	definitions[equippable] = (ComponentDef){
@@ -746,9 +656,13 @@ void initDefs() {
 	};
 
 	definitions[painter] = (ComponentDef){
-		.draw = painter_draw,
 		.init = painter_init,
+		.draw = painter_draw,
 		.recieve = painter_recieve,
 		.elim = freeData,
+	};
+
+	definitions[remover] = (ComponentDef){
+		.recieve = remover_recieve,
 	};
 }

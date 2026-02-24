@@ -24,6 +24,13 @@ int main()
 {
 	srand(time(NULL));
 
+
+	for (int i = 0; i < 2048; ++i) {
+		refmap[i] = 0; refbackmap[i] = 0;
+	}
+
+	controlled = (ObjectRef){ 0 };
+
 	drawInit();
 	UIInit();
 
@@ -41,7 +48,7 @@ int main()
 	SetExitKey(-1);
 	SetMousePosition(winXCenter, winYCenter);
 
-	rootObjectNode = (void*)0;
+	mainEnv.root = (void*)0;
 
 	{
 		Object* object = createObject((pos3) { 4, 0, 0 }, (cstr) { NULL, 0 });
@@ -53,7 +60,7 @@ int main()
 		MeshData* md = addComponent(object, &definitions[drawMesh])->data;
 		md->mesh = brickMesh;
 		md->part.col = LIGHTGRAY;
-		md->part.absorption = WHITE;
+		md->part.transmission = WHITE;
 		md->part.scale = (Vector3){ 0.25, 0.25, 0.25 };
 		updateMaterial(*md);
 	}
@@ -68,7 +75,7 @@ int main()
 		MeshData* md = addComponent(object, &definitions[drawMeshOpaque])->data;
 		md->mesh = brickMesh;
 		md->part.col = WHITE;
-		md->part.absorption = WHITE;
+		md->part.transmission = WHITE;
 		md->part.scale = (Vector3){ 1.0, 1.0, 1.0 };
 		updateMaterial(*md);
 	}
@@ -87,10 +94,10 @@ int main()
 		}
 		
 		if (IsKeyPressed(KEY_TAB)) {
-			if (IsKeyDown(KEY_LEFT_CONTROL)) controlled = NULL;
-			if (controlled && IsKeyDown(KEY_LEFT_SHIFT)) {
-				Component* avatarComp = findFirstComponent(controlled, &definitions[avatar]);
-				if (controlled && avatarComp) avatarComp->data = NULL;
+			if (IsKeyDown(KEY_LEFT_CONTROL)) controlled = toRef(NULL);
+			if (exists(controlled) && IsKeyDown(KEY_LEFT_SHIFT)) {
+				Component* avatarComp = findFirstComponent(fromRef(controlled), &definitions[avatar]);
+				if (exists(controlled) && avatarComp) *(ObjectRef*)(avatarComp->data) = toRef(NULL);
 			}
 		}
 		
@@ -116,7 +123,7 @@ int main()
 			targetOri = rotateOrientationAxisAngle(targetOri, targetOri.forth, dt);
 			update = true;
 		}
-		if (!controlled) {
+		if (!exists(controlled)) {
 			if (update) {
 				camOri = targetOri;
 				updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
@@ -127,18 +134,12 @@ int main()
 		Vector3 movement = Vector3Scale(getMovement(), displacement);
 
 		if (mouseLocked)
-		if (controlled) {
-			Component* comp = controlled->components;
-			while (comp) {
-				ComponentDef* def = comp->def;
-				if (def->recieve) {
-					def->recieve(comp, moveTo, moveTo_(vec3addPv(camPos, movement)));
-					def->recieve(comp, orient, orient_(targetOri));
-				}
-				comp = comp->next;
-			}
-			camPos = controlled->pos;
-			camOri.up = controlled->orientation.up;
+		if (exists(controlled)) {
+			sendSignal(controlled, moveTo, moveTo_(vec3addPv(camPos, movement)));
+			sendSignal(controlled, orient, orient_(targetOri));
+			Object* controlobj = fromRef(controlled);
+			camPos = controlobj->pos;
+			camOri.up = controlobj->orientation.up;
 			camOri = rotateOrientationAxisAngle(camOri, camOri.up, (GetMouseX() - winXCenter) * sensitivity);
 			mainCam.position = getZoom();
 			updateCamControl(&mainCam, camOri, pitch, &camR, &camFace);
@@ -180,12 +181,12 @@ int main()
 
 			directionOrtho scrollDir = getScrollDir();
 			if (scrollDir) {
-				if (controlled) sendSignal(controlled, paginate, paginate_(scrollDir));
 				UIobject* ID = getPointed();
 				if (ID) sendSignal(ID->obj, scroll, scroll_(scrollDir, ID->type));
+				if (exists(controlled)) sendSignal(controlled, paginate, paginate_(scrollDir));
 			}
 
-			if (controlled && action)
+			if (exists(controlled) && action)
 				sendSignal(controlled, interact, interact_(action));
 			if (action) send(action);
 		}
@@ -202,7 +203,7 @@ int main()
 
 		// SERVER
 
-		ObjectNode* node = rootObjectNode;
+		ObjectNode* node = mainEnv.root;
 		while (node) {
 			Component* comp = node->object.components;
 			ObjectNode* next = node->next;
