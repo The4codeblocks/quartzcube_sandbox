@@ -99,7 +99,7 @@ Object* fromRef(ObjectRef);
 
 ObjectRef toRef(Object*);
 
-bool exists(Objectref);
+bool exists(ObjectRef);
 
 inline void sendSignal(ObjectRef object, dataChannel channel, cstr data) {
 	Object* obj = fromRef(object);

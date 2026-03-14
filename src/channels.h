@@ -73,7 +73,7 @@ inline cstr paginate_(directionOrtho dir) {
 
 inline cstr scroll_(directionOrtho dir, UIID ID) {
 	scroll_temp = (ScrollAction){ dir, ID };
-	return (cstr) { .data = &scroll_temp, 2 };
+	return (cstr) { .data = &scroll_temp, sizeof(scroll_temp) };
 }
 
 #endif

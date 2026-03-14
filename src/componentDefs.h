@@ -64,7 +64,7 @@ typedef enum {
 	controllable,   // data: NULL
 
 	particleCannon, // data: NULL
-	physics,        // data: <this is not done>
+	physics,        // data: float
 	wireable,       // data: LinkedList<ObjectRef>
 	sendOnClick,    // data: NULL
 

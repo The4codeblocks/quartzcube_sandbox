@@ -12,6 +12,8 @@
 
 #include "spawntool.h"
 
+//#include "physics.h"
+
 #define matrixScale(x, y, z) (Matrix){ x, 0.0f, 0.0f, 0.0f, 0.0f, y, 0.0f, 0.0f, 0.0f, 0.0f, z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f }
 
 #define simpleMallocInit(type) (Component* comp) {comp->data = malloc(sizeof(type));}
@@ -220,7 +222,7 @@ void equippable_UIaction(Component* comp, dataChannel channel, cstr data) {
 }
 
 void sendOnClick_UIaction(Component* comp, dataChannel channel, cstr data) {
-	if ((data.length >= 3) & (channel == click)) {
+	if ((data.length >= sizeof(ClickAction)) & (channel == click)) {
 		ClickAction act = *(ClickAction*)data.data;
 		if (act.id == solid)
 		if (act.action & ui_DLMB) wireSendAll(comp->obj, (cstr) { 0 });
@@ -412,11 +414,11 @@ void avatar_recieve(Component* comp, dataChannel channel, cstr data) {
 		if (exists(ref)) sendSignal(ref, channel, data);
 		break;
 	case moveTo:
-		if (data.length < 24) break;
+		if (data.length < sizeof(pos3)) break;
 		object->pos = *(pos3*)(data.data);
 		break;
 	case orient:
-		if (data.length < 24) break;
+		if (data.length < sizeof(orientation)) break;
 		object->orientation = *(orientation*)(data.data);
 		break;
 	}
@@ -428,7 +430,7 @@ void wiring_recieve(Component* comp, dataChannel channel, cstr data) {
 	switch (channel) {
 	case interact:
 		UIinteraction action = *(UIinteraction*)data.data;
-		if ((data.length >= 2) && (action & (ui_DLMB | ui_DRMB))) {
+		if ((data.length >= sizeof(UIinteraction)) && (action & (ui_DLMB | ui_DRMB))) {
 			ObjectPair* pair = comp->data;
 			UIobject* pointed = getPointed();
 			if (action & ui_DLMB) pair->to = pointed ? pointed->obj : (ObjectRef){0};
@@ -664,5 +666,10 @@ void initDefs() {
 
 	definitions[remover] = (ComponentDef){
 		.recieve = remover_recieve,
+	};
+
+	definitions[physics] = (ComponentDef){
+		//.init = physics_init,
+		.elim = freeData,
 	};
 }

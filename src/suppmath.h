@@ -16,16 +16,21 @@ typedef struct { // doubleprecision vec3
 	double x, y, z;
 } vec3;
 
-typedef struct { // doubleprecision vec3, but for positions
-	double x, y, z;
+#define fixedpointFractional 16 // 16 bit fractional part
+
+#define floatToFixed (float)(1 << fixedpointFractional)
+#define fixedToFloat (1.0 / floatToFixed)
+
+typedef struct { // doubleprecision fixedpoint vec3
+	long long x, y, z;
 } pos3;
 
 
 inline pos3 vec3addPV(const pos3 p, const vec3 v) {
 	return (pos3) {
-		p.x + v.x,
-		p.y + v.y,
-		p.z + v.z,
+		p.x + v.x * floatToFixed,
+		p.y + v.y * floatToFixed,
+		p.z + v.z * floatToFixed,
 	};
 };
 
@@ -39,17 +44,17 @@ inline vec3 vec3addVV(const vec3 u, const vec3 v) {
 
 inline pos3 vec3subPV(const pos3 p, const vec3 v) {
 	return (pos3) {
-		p.x - v.x,
-		p.y - v.y,
-		p.z - v.z,
+		p.x - v.x * floatToFixed,
+		p.y - v.y * floatToFixed,
+		p.z - v.z * floatToFixed,
 	};
 };
 
 inline vec3 vec3subPP(const pos3 p, const pos3 v) {
 	return (vec3) {
-		p.x - v.x,
-		p.y - v.y,
-		p.z - v.z,
+		(p.x - v.x) * fixedToFloat,
+		(p.y - v.y) * fixedToFloat,
+		(p.z - v.z) * fixedToFloat,
 	};
 };
 
@@ -63,9 +68,9 @@ inline vec3 vec3subVV(const vec3 u, const vec3 v) {
 
 inline pos3 vec3addPv(const pos3 p, const Vector3 v) {
 	return (pos3) {
-		p.x + v.x,
-		p.y + v.y,
-		p.z + v.z,
+		p.x + v.x * floatToFixed,
+		p.y + v.y * floatToFixed,
+		p.z + v.z * floatToFixed,
 	};
 };
 
@@ -79,9 +84,9 @@ inline vec3 vec3addVv(const vec3 u, const Vector3 v) {
 
 inline pos3 vec3subPv(const pos3 p, const Vector3 v) {
 	return (pos3) {
-		p.x - v.x,
-		p.y - v.y,
-		p.z - v.z,
+		p.x - v.x * floatToFixed,
+		p.y - v.y * floatToFixed,
+		p.z - v.z * floatToFixed,
 	};
 };
 
@@ -95,9 +100,9 @@ inline vec3 vec3subVv(const vec3 u, const Vector3 v) {
 
 inline pos3 pos3fromv(const Vector3 v) { // avoid
 	return (pos3) {
-		v.x,
-		v.y,
-		v.z,
+		v.x * floatToFixed,
+		v.y * floatToFixed,
+		v.z * floatToFixed,
 	};
 };
 
@@ -127,9 +132,9 @@ inline vec3 vec3scale(const vec3 v, const double n) {
 
 inline pos3 pos3avg(const pos3 u, const pos3 v) {
 	return (pos3) {
-		(u.x + v.x) * 0.5,
-		(u.y + v.y) * 0.5,
-		(u.z + v.z) * 0.5,
+		((u.x >> 1) + (v.x >> 1)) + ((u.x & v.x) & 1), 
+		((u.y >> 1) + (v.y >> 1)) + ((u.y & v.y) & 1), 
+		((u.z >> 1) + (v.z >> 1)) + ((u.z & v.z) & 1), 
 	};
 };
 

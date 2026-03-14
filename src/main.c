@@ -51,7 +51,7 @@ int main()
 	mainEnv.root = (void*)0;
 
 	{
-		Object* object = createObject((pos3) { 4, 0, 0 }, (cstr) { NULL, 0 });
+		Object* object = createObject((pos3) { 4 << fixedpointFractional, 0, 0 }, (cstr) { NULL, 0 });
 		addComponent(object, &definitions[spawnTool]);
 		addComponent(object, &definitions[equippable]);
 		UIscalable* ui = addComponent(object, &definitions[UImesh])->data;
@@ -66,7 +66,7 @@ int main()
 	}
 
 	{
-		Object* object = createObject((pos3) { 2, 0, 0 }, (cstr) { NULL, 0 });
+		Object* object = createObject((pos3) { 2 << fixedpointFractional, 0, 0 }, (cstr) { NULL, 0 });
 		addComponent(object, &definitions[avatar]);
 		UIscalable* ui = addComponent(object, &definitions[UImesh])->data;
 		ui->scl.mesh = brickMesh;
